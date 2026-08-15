@@ -10,15 +10,14 @@
      Firebase console → Project settings (gear icon) → Your apps
      → Web app → "SDK setup and configuration" → Config.
      These values are safe to keep in the page — access is
-     controlled by your Firestore security rules, not by hiding
+     controlled by your database security rules, not by hiding
      the config.
      ============================================================ */
   window.QUILL_FIREBASE_CONFIG = {
     apiKey: "PASTE_YOUR_API_KEY",
-    authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
-    projectId: "PASTE_YOUR_PROJECT_ID",
-    storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
-    messagingSenderId: "PASTE_YOUR_SENDER_ID",
+    authDomain: "quill-230f3.firebaseapp.com",
+    databaseURL: "https://quill-230f3-default-rtdb.firebaseio.com",
+    projectId: "quill-230f3",
     appId: "PASTE_YOUR_APP_ID"
   };
 </script>
@@ -457,9 +456,8 @@
     signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail
   } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
   import {
-    getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc,
-    onSnapshot, getDocs
-  } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
+    getDatabase, ref, push, set, update, remove, onValue, get
+  } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js';
 
   const $ = (id) => document.getElementById(id);
   const config = window.QUILL_FIREBASE_CONFIG;
@@ -472,7 +470,7 @@
 
   const app = initializeApp(config);
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  const db = getDatabase(app);
 
   let me = null;          /* {uid, name} */
   let family = [];        /* other users: {uid, name} */
@@ -534,20 +532,21 @@
 
     /* Keep the family directory entry fresh so others can share with us. */
     try {
-      await setDoc(doc(db, 'users', me.uid), { name: me.name }, { merge: true });
+      await set(ref(db, 'directory/' + me.uid), { name: me.name });
     } catch (e) { /* directory write is best-effort */ }
 
     loadFamily();
     checkLocalImport();
 
-    unsubscribe = onSnapshot(collection(db, 'users', me.uid, 'quotes'), (snap) => {
-      quotes = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    unsubscribe = onValue(ref(db, 'users/' + me.uid + '/quotes'), (snap) => {
+      const val = snap.val() || {};
+      quotes = Object.keys(val).map((id) => ({ id, ...val[id] }))
         .filter((q) => q && typeof q.text === 'string' && q.text);
       renderList();
       if (!lastShownId || !quotes.some((q) => q.id === lastShownId)) showRandom();
       else updateHeroFav();
     }, (err) => {
-      $('backup-status').textContent = 'Lost the connection to your collection (' + (err.code || 'unknown') + ') — reload the page.';
+      $('backup-status').textContent = 'Lost the connection to your collection (' + (err.message || 'unknown') + ') — reload the page.';
     });
 
     lastShownId = null;
@@ -564,9 +563,10 @@
 
   async function loadFamily() {
     try {
-      const snap = await getDocs(collection(db, 'users'));
-      family = snap.docs
-        .map((d) => ({ uid: d.id, name: (d.data() || {}).name || 'Someone' }))
+      const snap = await get(ref(db, 'directory'));
+      const val = snap.val() || {};
+      family = Object.keys(val)
+        .map((uid) => ({ uid, name: (val[uid] || {}).name || 'Someone' }))
         .filter((u) => u.uid !== me.uid);
     } catch (e) {
       family = [];
@@ -609,7 +609,7 @@
     try {
       const cred = await createUserWithEmailAndPassword(auth, $('su-email').value.trim(), $('su-pass').value);
       await updateProfile(cred.user, { displayName: name });
-      await setDoc(doc(db, 'users', cred.user.uid), { name }, { merge: true });
+      await set(ref(db, 'directory/' + cred.user.uid), { name });
       me = { uid: cred.user.uid, name };
       $('whoami-name').textContent = name;
       $('signup-form').reset();
@@ -628,7 +628,7 @@
   }
 
   async function addQuote(data) {
-    return addDoc(collection(db, 'users', me.uid, 'quotes'), data);
+    return push(ref(db, 'users/' + me.uid + '/quotes'), data);
   }
 
   function fmtDate(iso) {
@@ -650,7 +650,7 @@
     const q = quotes.find((x) => x.id === id);
     if (!q) return;
     try {
-      await updateDoc(doc(db, 'users', me.uid, 'quotes', id), { fav: !q.fav });
+      await update(ref(db, 'users/' + me.uid + '/quotes/' + id), { fav: !q.fav });
     } catch (e) {
       $('backup-status').textContent = 'Couldn’t update the favorite — check your connection.';
     }
@@ -708,13 +708,13 @@
 
   async function sendCopyTo(person, q, statusEl) {
     try {
-      await addDoc(collection(db, 'users', person.uid, 'quotes'), {
+      await push(ref(db, 'users/' + person.uid + '/quotes'), {
         text: q.text, by: q.by || '', note: q.note || '',
         added: new Date().toISOString(), fav: false, sharedBy: me.name
       });
       statusEl.textContent = 'Sent — it’s in ' + person.name + '’s collection now, on every device.';
     } catch (e) {
-      statusEl.textContent = 'Couldn’t send to ' + person.name + ' (' + (e.code || 'error') + ').';
+      statusEl.textContent = 'Couldn’t send to ' + person.name + ' (' + (e.message || 'error') + ').';
     }
   }
 
@@ -931,7 +931,7 @@
     if (editingId === id) resetForm();
     if (openId === id) openId = null;
     try {
-      await deleteDoc(doc(db, 'users', me.uid, 'quotes', id));
+      await remove(ref(db, 'users/' + me.uid + '/quotes/' + id));
     } catch (e) {
       $('backup-status').textContent = 'Couldn’t delete — check your connection.';
     }
@@ -947,7 +947,7 @@
 
     try {
       if (editingId) {
-        await updateDoc(doc(db, 'users', me.uid, 'quotes', editingId), { text, by, note });
+        await update(ref(db, 'users/' + me.uid + '/quotes/' + editingId), { text, by, note });
         resetForm();
       } else {
         await addQuote(quoteData(text, by, note));
