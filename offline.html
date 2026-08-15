@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quill</title>
+</head>
+<body>
+<style>
+  :root {
+    --paper: #FDF9F0;
+    --card: #FFFFFF;
+    --ink: #26221C;
+    --ink-soft: #6E675A;
+    --line: #E7DFCE;
+    --accent: #2C55D9;
+    --accent-ink: #FFFFFF;
+    --mark: #E8A93C;
+    --danger: #B4372F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1F1C16;
+      --card: #29251E;
+      --ink: #F1EADB;
+      --ink-soft: #A79D8A;
+      --line: #3B362C;
+      --accent: #8FA9F2;
+      --accent-ink: #141B33;
+      --mark: #D9A741;
+      --danger: #E58077;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1F1C16;
+    --card: #29251E;
+    --ink: #F1EADB;
+    --ink-soft: #A79D8A;
+    --line: #3B362C;
+    --accent: #8FA9F2;
+    --accent-ink: #141B33;
+    --mark: #D9A741;
+    --danger: #E58077;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.25rem;
+  }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .wordmark {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin: 0;
+  }
+  .wordmark .nib { color: var(--mark); }
+  .tagline { color: var(--ink-soft); font-size: 0.9rem; margin: 0.1rem 0 0; }
+  .whoami {
+    text-align: right;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+  }
+  .whoami .name { color: var(--ink); font-weight: 600; }
+  .count {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Random quote hero */
+  .hero {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 2.25rem 2rem 1.75rem;
+    position: relative;
+  }
+  .hero .mark {
+    font-family: Georgia, serif;
+    font-size: 4.5rem;
+    line-height: 1;
+    color: var(--mark);
+    position: absolute;
+    top: 0.75rem;
+    left: 1.1rem;
+    user-select: none;
+  }
+  .hero blockquote {
+    margin: 1.25rem 0 0;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.55rem;
+    line-height: 1.4;
+    text-wrap: balance;
+  }
+  .hero .who {
+    margin: 1rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+  }
+  .hero .who strong { color: var(--ink); font-weight: 600; }
+  .hero .note { margin: 0.35rem 0 0; color: var(--ink-soft); font-size: 0.85rem; font-style: italic; }
+  .hero-actions { margin-top: 1.5rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .hero.fresh blockquote, .hero.fresh .who, .hero.fresh .note { animation: settle 240ms ease-out; }
+  @keyframes settle {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero.fresh blockquote, .hero.fresh .who, .hero.fresh .note { animation: none; }
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    padding: 0.5rem 1rem;
+  }
+  button.primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  button.quiet {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    padding: 0.25rem 0.4rem;
+    font-size: 0.85rem;
+  }
+  button.quiet.danger { color: var(--danger); }
+  button.star { color: var(--mark); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Sections */
+  h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin: 0 0 0.75rem;
+  }
+
+  form.add, .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  label { font-size: 0.85rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 0.3rem; }
+  input, textarea {
+    font: inherit;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.55rem 0.7rem;
+    width: 100%;
+  }
+  textarea { resize: vertical; min-height: 4.5rem; font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: 1.05rem; }
+  .form-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+  .form-hint { font-size: 0.8rem; color: var(--ink-soft); margin: 0; }
+  .form-error { font-size: 0.85rem; color: var(--danger); margin: 0; min-height: 1.3em; }
+
+  .list-tools { display: flex; gap: 0.6rem; margin-bottom: 1rem; align-items: center; }
+  .list-tools input { flex: 1; }
+  button.chip {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.8rem;
+    white-space: nowrap;
+    color: var(--ink-soft);
+  }
+  button.chip[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+
+  ul.quotes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  ul.quotes li {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+  }
+  ul.quotes li.open { border-color: var(--accent); cursor: default; }
+  ul.quotes blockquote {
+    margin: 0;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.05rem;
+  }
+  ul.quotes blockquote .fav-mark { color: var(--mark); margin-right: 0.35rem; }
+  ul.quotes .meta {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  ul.quotes .meta .by { color: var(--ink); font-weight: 600; }
+  ul.quotes .meta .shared { font-style: italic; }
+  ul.quotes .meta .date {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+  }
+  ul.quotes .meta .spacer { flex: 1; }
+  ul.quotes .meta .hint { font-size: 0.75rem; }
+  ul.quotes .note { margin: 0.3rem 0 0; font-size: 0.85rem; font-style: italic; color: var(--ink-soft); }
+
+  .actions {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .share-panel {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .share-panel .share-title { font-size: 0.8rem; color: var(--ink-soft); margin: 0; }
+  .share-panel .share-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  .empty {
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+    padding: 1.5rem;
+    color: var(--ink-soft);
+    text-align: center;
+    font-size: 0.95rem;
+  }
+
+  /* Login page */
+  .login-intro {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.3rem;
+    margin: 0;
+    text-wrap: balance;
+  }
+  ul.profiles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  ul.profiles li {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .profile-row { display: flex; align-items: center; gap: 0.75rem; }
+  .profile-row .pname { font-weight: 600; font-size: 1.05rem; flex: 1; }
+  .profile-row .lock { color: var(--ink-soft); font-size: 0.8rem; }
+  .pw-row { display: flex; gap: 0.6rem; align-items: center; }
+  .pw-row input { flex: 1; }
+
+  details.backup, details.newp { border-top: 1px solid var(--line); padding-top: 1.25rem; }
+  details summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); }
+  details .inner { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+  details.backup textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.75rem; min-height: 6rem; }
+  .backup-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin: 0; min-height: 1.3em; }
+</style>
+
+<!-- ============ Sign-in page (#/login) ============ -->
+<div class="wrap" id="login-view" hidden>
+  <header>
+    <div>
+      <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      <p class="tagline">The funny things they said.</p>
+    </div>
+  </header>
+
+  <section class="hero">
+    <span class="mark" aria-hidden="true">&ldquo;</span>
+    <p class="login-intro">Who&rsquo;s this?</p>
+    <p class="form-hint" id="login-hint" style="margin-top:0.75rem;"></p>
+  </section>
+
+  <section>
+    <h2>Profiles</h2>
+    <ul class="profiles" id="profile-list"></ul>
+    <div class="empty" id="profiles-empty" hidden>No profiles yet — make yours below.</div>
+  </section>
+
+  <details class="newp" id="newp" open>
+    <summary>New profile</summary>
+    <div class="inner">
+      <form class="panel" id="newp-form">
+        <label>Your name
+          <input id="np-name" required maxlength="40" placeholder="Zach">
+        </label>
+        <label>Password <span style="text-transform:none;">(optional — keeps others on this device out of your collection)</span>
+          <input id="np-pass" type="password" autocomplete="new-password" placeholder="Leave blank for no password">
+        </label>
+        <label>Repeat password
+          <input id="np-pass2" type="password" autocomplete="new-password" placeholder="Only if you set one">
+        </label>
+        <div class="form-actions">
+          <button class="primary" type="submit">Create profile</button>
+          <p class="form-error" id="np-error"></p>
+        </div>
+      </form>
+    </div>
+  </details>
+</div>
+
+<!-- ============ App page (#/app) ============ -->
+<div class="wrap" id="app-view" hidden>
+  <header>
+    <div>
+      <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      <p class="tagline">The funny things they said.</p>
+    </div>
+    <div class="whoami">
+      <span class="name" id="whoami-name"></span>
+      <span class="count" id="count"></span>
+      <button class="quiet" id="signout" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <section class="hero" id="hero" aria-live="polite">
+    <span class="mark" aria-hidden="true">&ldquo;</span>
+    <blockquote id="hero-text"></blockquote>
+    <p class="who" id="hero-who"></p>
+    <p class="note" id="hero-note" hidden></p>
+    <div class="hero-actions">
+      <button class="primary" id="shuffle" type="button">Another one</button>
+      <button id="hero-fav" type="button" hidden>&#9734; Favorite</button>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="form-title">Add a quote</h2>
+    <form class="add" id="add-form">
+      <label>The quote
+        <textarea id="f-text" required placeholder="Write it the way they said it&hellip;"></textarea>
+      </label>
+      <label>Who said it
+        <input id="f-by" required placeholder="Uncle Ray, Mom, Dave from next door&hellip;">
+      </label>
+      <label>Context <span style="text-transform:none; letter-spacing:0;">(optional)</span>
+        <input id="f-note" placeholder="Thanksgiving 2019, after the turkey incident">
+      </label>
+      <div class="form-actions">
+        <button class="primary" type="submit" id="f-submit">Save quote</button>
+        <button type="button" id="f-cancel" hidden>Cancel</button>
+        <p class="form-hint" id="f-hint"></p>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>The collection</h2>
+    <div class="list-tools">
+      <input id="search" type="search" placeholder="Search quotes or people&hellip;" aria-label="Search quotes">
+      <button class="chip" id="fav-filter" type="button" aria-pressed="false">&#9733; Favorites</button>
+    </div>
+    <ul class="quotes" id="list"></ul>
+    <div class="empty" id="empty" hidden></div>
+  </section>
+
+  <details class="backup">
+    <summary>Backup, restore &amp; shared quotes</summary>
+    <div class="inner">
+      <p class="form-hint">Your quotes live in this browser, under your profile. Copy a backup now and then, and paste it into your profile on another device to bring them over. A shared quote someone sent you pastes in here too.</p>
+      <textarea id="backup-box" aria-label="Backup data" placeholder='Paste a backup or a shared quote here, then press "Load"'></textarea>
+      <div class="backup-actions">
+        <button type="button" id="backup-copy">Copy backup</button>
+        <button type="button" id="backup-load">Load</button>
+      </div>
+      <p class="status" id="backup-status"></p>
+    </div>
+  </details>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var PROFILES_KEY = 'quill.profiles.v1';
+  var SESSION_KEY = 'quill.session.v1';
+  var QUOTES_PREFIX = 'quill.quotes.v1.';
+  var LEGACY_QUOTES_KEY = 'quill.quotes.v1';
+
+  var profiles = loadJSON(PROFILES_KEY, []);
+  var current = null;   /* signed-in profile */
+  var quotes = [];
+  var lastShownId = null;
+  var editingId = null;
+  var openId = null;    /* expanded quote card */
+  var favOnly = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function loadJSON(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      var data = raw ? JSON.parse(raw) : fallback;
+      return Array.isArray(data) === Array.isArray(fallback) ? data : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function saveJSON(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function uid(prefix) {
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function fmtDate(iso) {
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function copyText(text, onCopied, onManual) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onCopied, onManual);
+    } else {
+      onManual();
+    }
+  }
+
+  /* ---- Password hashing ----
+     SHA-256 via Web Crypto where available; a simple fallback hash otherwise.
+     Either way this deters casual snooping on a shared device — it is not
+     bank-grade security, and the README says so. */
+  function fallbackHash(str) {
+    var h1 = 5381, h2 = 52711, i;
+    for (i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      h1 = (h1 * 33 ^ c) >>> 0;
+      h2 = (h2 * 31 + c) >>> 0;
+    }
+    return 'fb-' + h1.toString(16) + h2.toString(16);
+  }
+
+  function hashPassword(salt, password) {
+    var input = salt + ':' + password;
+    if (window.crypto && crypto.subtle && crypto.subtle.digest) {
+      var bytes = new TextEncoder().encode(input);
+      return crypto.subtle.digest('SHA-256', bytes).then(function (buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+          return ('0' + b.toString(16)).slice(-2);
+        }).join('');
+      }, function () {
+        return fallbackHash(input);
+      });
+    }
+    return Promise.resolve(fallbackHash(input));
+  }
+
+  /* ---- Routing ----
+     The sign-in page and the app are separate pages with their own URLs:
+     #/login and #/app. Landing on #/app while signed out bounces to sign-in. */
+  function showPage(name) {
+    $('login-view').hidden = name !== 'login';
+    $('app-view').hidden = name !== 'app';
+  }
+
+  function route() {
+    if (location.hash === '#/app') {
+      if (current) {
+        showPage('app');
+      } else {
+        location.replace('#/login');
+      }
+    } else {
+      if (location.hash !== '#/login') {
+        try { history.replaceState(null, '', '#/login'); } catch (e) { location.hash = '#/login'; }
+      }
+      showPage('login');
+      renderLogin('');
+    }
+  }
+  window.addEventListener('hashchange', route);
+
+  /* ---- Profiles & session ---- */
+  function saveProfiles() { saveJSON(PROFILES_KEY, profiles); }
+
+  function quotesKey(profileId) { return QUOTES_PREFIX + profileId; }
+
+  function signIn(profile) {
+    current = profile;
+    try { localStorage.setItem(SESSION_KEY, profile.id); } catch (e) {}
+    quotes = loadJSON(quotesKey(profile.id), []).filter(function (q) { return q && q.text; });
+    lastShownId = null;
+    openId = null;
+    favOnly = false;
+    $('fav-filter').setAttribute('aria-pressed', 'false');
+    resetForm();
+    $('search').value = '';
+    $('backup-box').value = '';
+    $('backup-status').textContent = '';
+    $('whoami-name').textContent = profile.name;
+    renderList();
+    showRandom();
+    if (location.hash === '#/app') showPage('app');
+    else location.hash = '#/app';
+  }
+
+  function signOut() {
+    current = null;
+    quotes = [];
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    location.hash = '#/login';
+  }
+
+  function saveQuotes() {
+    if (!current) return;
+    if (!saveJSON(quotesKey(current.id), quotes)) {
+      $('backup-status').textContent = 'Could not save to this browser’s storage — copy a backup so nothing is lost.';
+    }
+  }
+
+  function saveQuotesFor(profileId, list) {
+    return saveJSON(quotesKey(profileId), list);
+  }
+
+  /* One-time migration: quotes saved before profiles existed move into the
+     first profile created, so nobody's collection is lost by the upgrade. */
+  function migrateLegacyInto(profileId) {
+    var legacy = loadJSON(LEGACY_QUOTES_KEY, null);
+    if (!Array.isArray(legacy) || legacy.length === 0) return false;
+    saveJSON(quotesKey(profileId), legacy);
+    try { localStorage.removeItem(LEGACY_QUOTES_KEY); } catch (e) {}
+    return true;
+  }
+
+  /* ---- Sign-in page ---- */
+  function renderLogin(hint) {
+    $('login-hint').textContent = hint || '';
+    var list = $('profile-list');
+    list.textContent = '';
+    $('profiles-empty').hidden = profiles.length > 0;
+    $('newp').open = profiles.length === 0;
+    $('np-error').textContent = '';
+
+    profiles.forEach(function (p) {
+      var li = document.createElement('li');
+
+      var row = document.createElement('div');
+      row.className = 'profile-row';
+      var name = document.createElement('span');
+      name.className = 'pname';
+      name.textContent = p.name;
+      row.appendChild(name);
+      if (p.hash) {
+        var lock = document.createElement('span');
+        lock.className = 'lock';
+        lock.textContent = 'password';
+        row.appendChild(lock);
+      }
+      var enter = document.createElement('button');
+      enter.type = 'button';
+      enter.className = 'primary';
+      enter.textContent = 'Sign in';
+      row.appendChild(enter);
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'quiet danger';
+      del.textContent = 'Delete';
+      row.appendChild(del);
+      li.appendChild(row);
+
+      var pwRow = document.createElement('form');
+      pwRow.className = 'pw-row';
+      pwRow.hidden = true;
+      var pwInput = document.createElement('input');
+      pwInput.type = 'password';
+      pwInput.autocomplete = 'current-password';
+      pwInput.placeholder = 'Password for ' + p.name;
+      pwInput.setAttribute('aria-label', 'Password for ' + p.name);
+      var pwGo = document.createElement('button');
+      pwGo.type = 'submit';
+      pwGo.className = 'primary';
+      pwGo.textContent = 'Go';
+      var pwErr = document.createElement('p');
+      pwErr.className = 'form-error';
+      pwRow.appendChild(pwInput);
+      pwRow.appendChild(pwGo);
+      li.appendChild(pwRow);
+      li.appendChild(pwErr);
+
+      var pendingAction = 'signin';
+
+      function openPwRow(action, buttonLabel) {
+        pendingAction = action;
+        pwGo.textContent = buttonLabel;
+        pwRow.hidden = false;
+        pwErr.textContent = '';
+        pwInput.value = '';
+        pwInput.focus();
+      }
+
+      function deleteProfile() {
+        if (!confirm('Delete the profile “' + p.name + '” and every quote in it? This can’t be undone.')) return;
+        profiles = profiles.filter(function (x) { return x.id !== p.id; });
+        saveProfiles();
+        try { localStorage.removeItem(quotesKey(p.id)); } catch (e) {}
+        renderLogin('Profile “' + p.name + '” deleted.');
+      }
+
+      enter.addEventListener('click', function () {
+        if (!p.hash) { signIn(p); return; }
+        if (pwRow.hidden || pendingAction !== 'signin') openPwRow('signin', 'Go');
+        else pwInput.focus();
+      });
+
+      del.addEventListener('click', function () {
+        if (!p.hash) { deleteProfile(); return; }
+        openPwRow('delete', 'Confirm delete');
+      });
+
+      pwRow.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hashPassword(p.salt, pwInput.value).then(function (h) {
+          if (h !== p.hash) {
+            pwErr.textContent = 'That’s not it — try again.';
+            pwInput.select();
+            return;
+          }
+          if (pendingAction === 'delete') deleteProfile();
+          else signIn(p);
+        });
+      });
+
+      list.appendChild(li);
+    });
+  }
+
+  $('newp-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('np-name').value.trim();
+    var pass = $('np-pass').value;
+    var pass2 = $('np-pass2').value;
+    var err = $('np-error');
+    err.textContent = '';
+
+    if (!name) { err.textContent = 'Give the profile a name.'; return; }
+    if (profiles.some(function (p) { return p.name.toLowerCase() === name.toLowerCase(); })) {
+      err.textContent = 'There’s already a profile called “' + name + '”.';
+      return;
+    }
+    if (pass !== pass2) { err.textContent = 'The passwords don’t match.'; return; }
+
+    var profile = { id: uid('p'), name: name, salt: '', hash: '', created: new Date().toISOString() };
+    var finish = function () {
+      var isFirst = profiles.length === 0;
+      profiles.push(profile);
+      saveProfiles();
+      if (isFirst) migrateLegacyInto(profile.id);
+      $('newp-form').reset();
+      signIn(profile);
+    };
+
+    if (pass) {
+      profile.salt = uid('s');
+      hashPassword(profile.salt, pass).then(function (h) {
+        profile.hash = h;
+        finish();
+      });
+    } else {
+      finish();
+    }
+  });
+
+  /* ---- Favorites ---- */
+  function toggleFav(id) {
+    var q = quotes.find(function (x) { return x.id === id; });
+    if (!q) return;
+    q.fav = !q.fav;
+    saveQuotes();
+    renderList();
+    if (lastShownId === id) updateHeroFav();
+  }
+
+  function updateHeroFav() {
+    var btn = $('hero-fav');
+    var q = quotes.find(function (x) { return x.id === lastShownId; });
+    if (!q) { btn.hidden = true; return; }
+    btn.hidden = false;
+    btn.innerHTML = q.fav ? '&#9733; Favorited' : '&#9734; Favorite';
+    btn.classList.toggle('star', !!q.fav);
+  }
+
+  /* ---- Random quote ---- */
+  function showRandom() {
+    var hero = $('hero');
+    if (quotes.length === 0) {
+      $('hero-text').textContent = 'Nothing here yet.';
+      $('hero-who').textContent = 'Add the first quote you can remember below — the rest come back once you start.';
+      $('hero-note').hidden = true;
+      $('shuffle').hidden = true;
+      $('hero-fav').hidden = true;
+      return;
+    }
+    $('shuffle').hidden = false;
+    var pool = quotes.length > 1
+      ? quotes.filter(function (q) { return q.id !== lastShownId; })
+      : quotes;
+    var q = pool[Math.floor(Math.random() * pool.length)];
+    lastShownId = q.id;
+
+    $('hero-text').textContent = '“' + q.text + '”';
+    var who = $('hero-who');
+    who.textContent = '';
+    who.appendChild(document.createTextNode('— '));
+    var strong = document.createElement('strong');
+    strong.textContent = q.by || 'Unknown';
+    who.appendChild(strong);
+    var note = $('hero-note');
+    note.textContent = q.note || '';
+    note.hidden = !q.note;
+    updateHeroFav();
+
+    hero.classList.remove('fresh');
+    void hero.offsetWidth; /* restart the entry animation */
+    hero.classList.add('fresh');
+  }
+
+  /* ---- Sharing ---- */
+  function shareAsText(q) {
+    var line = '“' + q.text + '” — ' + (q.by || 'Unknown');
+    if (q.note) line += ' (' + q.note + ')';
+    return line;
+  }
+
+  function shareAsCode(q) {
+    return JSON.stringify([{
+      id: uid('q'),
+      text: q.text,
+      by: q.by || '',
+      note: q.note || '',
+      added: q.added || new Date().toISOString(),
+      sharedBy: current ? current.name : ''
+    }]);
+  }
+
+  function sendCopyTo(profile, q, statusEl) {
+    var theirs = loadJSON(quotesKey(profile.id), []).filter(function (x) { return x && x.text; });
+    var dupe = theirs.some(function (x) {
+      return x.text === q.text && (x.by || '') === (q.by || '');
+    });
+    if (dupe) {
+      statusEl.textContent = profile.name + ' already has this one.';
+      return;
+    }
+    theirs.push({
+      id: uid('q'),
+      text: q.text,
+      by: q.by || '',
+      note: q.note || '',
+      added: new Date().toISOString(),
+      sharedBy: current.name
+    });
+    if (saveQuotesFor(profile.id, theirs)) {
+      statusEl.textContent = 'Sent — it’ll be in ' + profile.name + '’s collection next time they sign in.';
+    } else {
+      statusEl.textContent = 'Couldn’t save into ' + profile.name + '’s collection — this browser’s storage may be full.';
+    }
+  }
+
+  /* ---- List ---- */
+  function renderList() {
+    var query = $('search').value.trim().toLowerCase();
+    var list = $('list');
+    var empty = $('empty');
+    list.textContent = '';
+
+    var shown = quotes.filter(function (q) {
+      if (favOnly && !q.fav) return false;
+      if (!query) return true;
+      return (q.text + ' ' + (q.by || '') + ' ' + (q.note || '')).toLowerCase().indexOf(query) !== -1;
+    });
+    shown.sort(function (a, b) { return (b.added || '').localeCompare(a.added || ''); });
+
+    empty.hidden = shown.length > 0;
+    if (shown.length === 0) {
+      if (quotes.length === 0) {
+        empty.textContent = 'No quotes yet. The best ones are the throwaway lines — write them down before they fade.';
+      } else if (favOnly && !query) {
+        empty.textContent = 'No favorites yet — open a quote and press the star.';
+      } else {
+        empty.textContent = 'Nothing matches “' + $('search').value.trim() + '”' + (favOnly ? ' in your favorites' : '') + '.';
+      }
+    }
+
+    shown.forEach(function (q) {
+      var li = document.createElement('li');
+      var isOpen = openId === q.id;
+      if (isOpen) li.classList.add('open');
+
+      var bq = document.createElement('blockquote');
+      if (q.fav) {
+        var star = document.createElement('span');
+        star.className = 'fav-mark';
+        star.textContent = '★';
+        star.setAttribute('aria-label', 'Favorite');
+        bq.appendChild(star);
+      }
+      bq.appendChild(document.createTextNode('“' + q.text + '”'));
+      li.appendChild(bq);
+
+      if (q.note) {
+        var note = document.createElement('p');
+        note.className = 'note';
+        note.textContent = q.note;
+        li.appendChild(note);
+      }
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+      var by = document.createElement('span');
+      by.className = 'by';
+      by.textContent = q.by || 'Unknown';
+      meta.appendChild(by);
+      if (q.sharedBy) {
+        var shared = document.createElement('span');
+        shared.className = 'shared';
+        shared.textContent = 'shared by ' + q.sharedBy;
+        meta.appendChild(shared);
+      }
+      var date = document.createElement('span');
+      date.className = 'date';
+      date.textContent = q.added ? fmtDate(q.added) : '';
+      meta.appendChild(date);
+      var spacer = document.createElement('span');
+      spacer.className = 'spacer';
+      meta.appendChild(spacer);
+      var hint = document.createElement('span');
+      hint.className = 'hint';
+      hint.textContent = isOpen ? 'click to close' : 'click for actions';
+      meta.appendChild(hint);
+      li.appendChild(meta);
+
+      if (isOpen) {
+        var actions = document.createElement('div');
+        actions.className = 'actions';
+
+        var fav = document.createElement('button');
+        fav.type = 'button';
+        fav.innerHTML = q.fav ? '&#9733; Favorited' : '&#9734; Favorite';
+        if (q.fav) fav.classList.add('star');
+        fav.addEventListener('click', function () { toggleFav(q.id); });
+        actions.appendChild(fav);
+
+        var shareBtn = document.createElement('button');
+        shareBtn.type = 'button';
+        shareBtn.textContent = 'Share';
+        actions.appendChild(shareBtn);
+
+        var edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'quiet';
+        edit.textContent = 'Edit';
+        edit.addEventListener('click', function () { startEdit(q.id); });
+        actions.appendChild(edit);
+
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'quiet danger';
+        del.textContent = 'Delete';
+        del.addEventListener('click', function () { removeQuote(q.id); });
+        actions.appendChild(del);
+
+        li.appendChild(actions);
+
+        var sharePanel = document.createElement('div');
+        sharePanel.className = 'share-panel';
+        sharePanel.hidden = true;
+
+        var others = profiles.filter(function (p) { return p.id !== current.id; });
+        var shareStatus = document.createElement('p');
+        shareStatus.className = 'status';
+
+        if (others.length > 0) {
+          var t1 = document.createElement('p');
+          t1.className = 'share-title';
+          t1.textContent = 'Send a copy to someone on this device:';
+          sharePanel.appendChild(t1);
+          var row1 = document.createElement('div');
+          row1.className = 'share-row';
+          others.forEach(function (p) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = p.name;
+            b.addEventListener('click', function () { sendCopyTo(p, q, shareStatus); });
+            row1.appendChild(b);
+          });
+          sharePanel.appendChild(row1);
+        }
+
+        var t2 = document.createElement('p');
+        t2.className = 'share-title';
+        t2.textContent = 'Or copy it to send in a message:';
+        sharePanel.appendChild(t2);
+        var row2 = document.createElement('div');
+        row2.className = 'share-row';
+        var copyTxt = document.createElement('button');
+        copyTxt.type = 'button';
+        copyTxt.textContent = 'Copy as text';
+        copyTxt.addEventListener('click', function () {
+          copyText(shareAsText(q), function () {
+            shareStatus.textContent = 'Copied — paste it anywhere.';
+          }, function () {
+            shareStatus.textContent = shareAsText(q);
+          });
+        });
+        var copyCode = document.createElement('button');
+        copyCode.type = 'button';
+        copyCode.textContent = 'Copy for Quill';
+        copyCode.title = 'A snippet the other person pastes into their Backup box';
+        copyCode.addEventListener('click', function () {
+          copyText(shareAsCode(q), function () {
+            shareStatus.textContent = 'Copied — they paste it into “Backup, restore & shared quotes” in their Quill.';
+          }, function () {
+            shareStatus.textContent = shareAsCode(q);
+          });
+        });
+        row2.appendChild(copyTxt);
+        row2.appendChild(copyCode);
+        sharePanel.appendChild(row2);
+        sharePanel.appendChild(shareStatus);
+        li.appendChild(sharePanel);
+
+        shareBtn.addEventListener('click', function () {
+          sharePanel.hidden = !sharePanel.hidden;
+        });
+      }
+
+      li.addEventListener('click', function (e) {
+        if (e.target.closest('button, input, form, a')) return;
+        openId = isOpen ? null : q.id;
+        renderList();
+      });
+
+      list.appendChild(li);
+    });
+
+    $('count').textContent = quotes.length === 1 ? '1 quote' : quotes.length + ' quotes';
+  }
+
+  $('fav-filter').addEventListener('click', function () {
+    favOnly = !favOnly;
+    this.setAttribute('aria-pressed', String(favOnly));
+    renderList();
+  });
+
+  $('hero-fav').addEventListener('click', function () {
+    if (lastShownId) toggleFav(lastShownId);
+  });
+
+  /* ---- Add / edit ---- */
+  function resetForm() {
+    editingId = null;
+    $('add-form').reset();
+    $('form-title').textContent = 'Add a quote';
+    $('f-submit').textContent = 'Save quote';
+    $('f-cancel').hidden = true;
+    $('f-hint').textContent = '';
+  }
+
+  function startEdit(id) {
+    var q = quotes.find(function (x) { return x.id === id; });
+    if (!q) return;
+    editingId = id;
+    $('f-text').value = q.text;
+    $('f-by').value = q.by || '';
+    $('f-note').value = q.note || '';
+    $('form-title').textContent = 'Edit quote';
+    $('f-submit').textContent = 'Save changes';
+    $('f-cancel').hidden = false;
+    $('add-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('f-text').focus();
+  }
+
+  function removeQuote(id) {
+    var q = quotes.find(function (x) { return x.id === id; });
+    if (!q) return;
+    if (!confirm('Delete this quote by ' + (q.by || 'Unknown') + '? This can’t be undone.')) return;
+    quotes = quotes.filter(function (x) { return x.id !== id; });
+    if (editingId === id) resetForm();
+    if (openId === id) openId = null;
+    saveQuotes();
+    renderList();
+    if (lastShownId === id) showRandom();
+  }
+
+  $('add-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = $('f-text').value.trim();
+    var by = $('f-by').value.trim();
+    var note = $('f-note').value.trim();
+    if (!text || !by) return;
+
+    if (editingId) {
+      var q = quotes.find(function (x) { return x.id === editingId; });
+      if (q) { q.text = text; q.by = by; q.note = note; }
+      var wasShown = lastShownId === editingId;
+      resetForm();
+      saveQuotes();
+      renderList();
+      if (wasShown) showRandom();
+    } else {
+      quotes.push({ id: uid('q'), text: text, by: by, note: note, added: new Date().toISOString() });
+      var first = quotes.length === 1;
+      resetForm();
+      saveQuotes();
+      renderList();
+      if (first) showRandom();
+      $('f-hint').textContent = 'Saved.';
+      setTimeout(function () { if (!editingId) $('f-hint').textContent = ''; }, 2000);
+    }
+  });
+
+  $('f-cancel').addEventListener('click', resetForm);
+  $('shuffle').addEventListener('click', showRandom);
+  $('search').addEventListener('input', renderList);
+  $('signout').addEventListener('click', signOut);
+
+  /* ---- Backup / restore / shared quotes ---- */
+  $('backup-copy').addEventListener('click', function () {
+    var payload = JSON.stringify(quotes, null, 2);
+    $('backup-box').value = payload;
+    copyText(payload, function () {
+      $('backup-status').textContent = 'Backup copied — paste it somewhere safe (a note, an email to yourself).';
+    }, function () {
+      $('backup-box').select();
+      $('backup-status').textContent = 'Backup is in the box above — copy it with Ctrl/Cmd+C.';
+    });
+  });
+
+  $('backup-load').addEventListener('click', function () {
+    var raw = $('backup-box').value.trim();
+    if (!raw) { $('backup-status').textContent = 'Paste a backup or a shared quote into the box first.'; return; }
+    var incoming;
+    try {
+      incoming = JSON.parse(raw);
+    } catch (e) {
+      $('backup-status').textContent = 'That doesn’t look like Quill data — paste the whole thing.';
+      return;
+    }
+    if (incoming && !Array.isArray(incoming) && typeof incoming === 'object') incoming = [incoming];
+    if (!Array.isArray(incoming)) {
+      $('backup-status').textContent = 'That doesn’t look like Quill data — paste the whole thing.';
+      return;
+    }
+    var added = 0, updated = 0;
+    incoming.forEach(function (inQ) {
+      if (!inQ || typeof inQ.text !== 'string' || !inQ.text.trim()) return;
+      var clean = {
+        id: typeof inQ.id === 'string' ? inQ.id : uid('q'),
+        text: inQ.text,
+        by: typeof inQ.by === 'string' ? inQ.by : '',
+        note: typeof inQ.note === 'string' ? inQ.note : '',
+        added: typeof inQ.added === 'string' ? inQ.added : new Date().toISOString(),
+        fav: !!inQ.fav,
+        sharedBy: typeof inQ.sharedBy === 'string' ? inQ.sharedBy : ''
+      };
+      var existing = quotes.find(function (x) { return x.id === clean.id; });
+      if (existing) {
+        existing.text = clean.text; existing.by = clean.by;
+        existing.note = clean.note; existing.added = clean.added;
+        existing.fav = clean.fav; existing.sharedBy = clean.sharedBy;
+        updated++;
+      } else {
+        quotes.push(clean);
+        added++;
+      }
+    });
+    saveQuotes();
+    renderList();
+    showRandom();
+    $('backup-status').textContent = 'Loaded: ' + added + ' new, ' + updated + ' updated. Nothing was deleted.';
+  });
+
+  /* ---- Boot ---- */
+  var sessionId = null;
+  try { sessionId = localStorage.getItem(SESSION_KEY); } catch (e) {}
+  var remembered = profiles.find(function (p) { return p.id === sessionId; });
+  if (remembered) {
+    current = remembered;
+    quotes = loadJSON(quotesKey(remembered.id), []).filter(function (q) { return q && q.text; });
+    $('whoami-name').textContent = remembered.name;
+    renderList();
+    showRandom();
+    if (location.hash !== '#/login') {
+      try { history.replaceState(null, '', '#/app'); } catch (e) {}
+    }
+  }
+  route();
+})();
+</script>
+</body>
+</html>

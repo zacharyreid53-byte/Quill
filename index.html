@@ -4,6 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quill</title>
+<script>
+  /* ============================================================
+     Your Firebase web app config goes here.
+     Firebase console → Project settings (gear icon) → Your apps
+     → Web app → "SDK setup and configuration" → Config.
+     These values are safe to keep in the page — access is
+     controlled by your Firestore security rules, not by hiding
+     the config.
+     ============================================================ */
+  window.QUILL_FIREBASE_CONFIG = {
+    apiKey: "PASTE_YOUR_API_KEY",
+    authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+    projectId: "PASTE_YOUR_PROJECT_ID",
+    storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+    messagingSenderId: "PASTE_YOUR_SENDER_ID",
+    appId: "PASTE_YOUR_APP_ID"
+  };
+</script>
 </head>
 <body>
 <style>
@@ -129,6 +147,12 @@
   @media (prefers-reduced-motion: reduce) {
     .hero.fresh blockquote, .hero.fresh .who, .hero.fresh .note { animation: none; }
   }
+  .login-intro {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.3rem;
+    margin: 0;
+    text-wrap: balance;
+  }
 
   button {
     font: inherit;
@@ -154,6 +178,7 @@
   }
   button.quiet.danger { color: var(--danger); }
   button.star { color: var(--mark); }
+  button:disabled { opacity: 0.6; cursor: default; }
   button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -273,36 +298,30 @@
     font-size: 0.95rem;
   }
 
-  /* Login page */
-  .login-intro {
-    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-    font-size: 1.3rem;
-    margin: 0;
-    text-wrap: balance;
-  }
-  ul.profiles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
-  ul.profiles li {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    padding: 0.9rem 1.1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-  }
-  .profile-row { display: flex; align-items: center; gap: 0.75rem; }
-  .profile-row .pname { font-weight: 600; font-size: 1.05rem; flex: 1; }
-  .profile-row .lock { color: var(--ink-soft); font-size: 0.8rem; }
-  .pw-row { display: flex; gap: 0.6rem; align-items: center; }
-  .pw-row input { flex: 1; }
+  .auth-columns { display: flex; flex-direction: column; gap: 2.25rem; }
 
-  details.backup, details.newp { border-top: 1px solid var(--line); padding-top: 1.25rem; }
+  details.backup { border-top: 1px solid var(--line); padding-top: 1.25rem; }
   details summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); }
   details .inner { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
   details.backup textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.75rem; min-height: 6rem; }
   .backup-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
   .status { font-size: 0.85rem; color: var(--ink-soft); margin: 0; min-height: 1.3em; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85em; }
 </style>
+
+<!-- ============ Loading ============ -->
+<div class="wrap" id="boot-view">
+  <header>
+    <div>
+      <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      <p class="tagline">The funny things they said.</p>
+    </div>
+  </header>
+  <section class="hero">
+    <span class="mark" aria-hidden="true">&ldquo;</span>
+    <p class="login-intro" id="boot-message">Connecting&hellip;</p>
+  </section>
+</div>
 
 <!-- ============ Sign-in page (#/login) ============ -->
 <div class="wrap" id="login-view" hidden>
@@ -315,36 +334,47 @@
 
   <section class="hero">
     <span class="mark" aria-hidden="true">&ldquo;</span>
-    <p class="login-intro">Who&rsquo;s this?</p>
+    <p class="login-intro">Sign in, and your quotes follow you to any device.</p>
     <p class="form-hint" id="login-hint" style="margin-top:0.75rem;"></p>
   </section>
 
-  <section>
-    <h2>Profiles</h2>
-    <ul class="profiles" id="profile-list"></ul>
-    <div class="empty" id="profiles-empty" hidden>No profiles yet — make yours below.</div>
-  </section>
-
-  <details class="newp" id="newp" open>
-    <summary>New profile</summary>
-    <div class="inner">
-      <form class="panel" id="newp-form">
-        <label>Your name
-          <input id="np-name" required maxlength="40" placeholder="Zach">
+  <div class="auth-columns">
+    <section>
+      <h2>Sign in</h2>
+      <form class="panel" id="signin-form">
+        <label>Email
+          <input id="si-email" type="email" required autocomplete="email" placeholder="you@example.com">
         </label>
-        <label>Password <span style="text-transform:none;">(optional — keeps others on this device out of your collection)</span>
-          <input id="np-pass" type="password" autocomplete="new-password" placeholder="Leave blank for no password">
-        </label>
-        <label>Repeat password
-          <input id="np-pass2" type="password" autocomplete="new-password" placeholder="Only if you set one">
+        <label>Password
+          <input id="si-pass" type="password" required autocomplete="current-password">
         </label>
         <div class="form-actions">
-          <button class="primary" type="submit">Create profile</button>
-          <p class="form-error" id="np-error"></p>
+          <button class="primary" type="submit" id="si-submit">Sign in</button>
+          <button class="quiet" type="button" id="si-forgot">Forgot password?</button>
         </div>
+        <p class="form-error" id="si-error"></p>
       </form>
-    </div>
-  </details>
+    </section>
+
+    <section>
+      <h2>New here? Create an account</h2>
+      <form class="panel" id="signup-form">
+        <label>Your name <span style="text-transform:none;">(how you'll appear to family when sharing)</span>
+          <input id="su-name" required maxlength="40" placeholder="Zach">
+        </label>
+        <label>Email
+          <input id="su-email" type="email" required autocomplete="email" placeholder="you@example.com">
+        </label>
+        <label>Password <span style="text-transform:none;">(at least 6 characters)</span>
+          <input id="su-pass" type="password" required minlength="6" autocomplete="new-password">
+        </label>
+        <div class="form-actions">
+          <button class="primary" type="submit" id="su-submit">Create account</button>
+        </div>
+        <p class="form-error" id="su-error"></p>
+      </form>
+    </section>
+  </div>
 </div>
 
 <!-- ============ App page (#/app) ============ -->
@@ -403,140 +433,123 @@
   </section>
 
   <details class="backup">
-    <summary>Backup, restore &amp; shared quotes</summary>
+    <summary>Backup &amp; import</summary>
     <div class="inner">
-      <p class="form-hint">Your quotes live in this browser, under your profile. Copy a backup now and then, and paste it into your profile on another device to bring them over. A shared quote someone sent you pastes in here too.</p>
-      <textarea id="backup-box" aria-label="Backup data" placeholder='Paste a backup or a shared quote here, then press "Load"'></textarea>
+      <p class="form-hint">Everything saves to your account automatically and follows you to any device — no backups needed. This box is for getting quotes in and out in bulk: copy your collection as text, or paste quotes to add them.</p>
+      <div id="local-import" hidden>
+        <p class="form-hint" id="local-import-label"></p>
+        <div class="backup-actions" id="local-import-buttons"></div>
+      </div>
+      <textarea id="backup-box" aria-label="Backup data" placeholder='Paste quotes here, then press "Add these quotes"'></textarea>
       <div class="backup-actions">
-        <button type="button" id="backup-copy">Copy backup</button>
-        <button type="button" id="backup-load">Load</button>
+        <button type="button" id="backup-copy">Copy my collection</button>
+        <button type="button" id="backup-load">Add these quotes</button>
       </div>
       <p class="status" id="backup-status"></p>
     </div>
   </details>
 </div>
 
-<script>
-(function () {
-  'use strict';
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
+  import {
+    getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+    signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail
+  } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
+  import {
+    getFirestore, collection, doc, setDoc, addDoc, updateDoc, deleteDoc,
+    onSnapshot, getDocs
+  } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
 
-  var PROFILES_KEY = 'quill.profiles.v1';
-  var SESSION_KEY = 'quill.session.v1';
-  var QUOTES_PREFIX = 'quill.quotes.v1.';
-  var LEGACY_QUOTES_KEY = 'quill.quotes.v1';
+  const $ = (id) => document.getElementById(id);
+  const config = window.QUILL_FIREBASE_CONFIG;
 
-  var profiles = loadJSON(PROFILES_KEY, []);
-  var current = null;   /* signed-in profile */
-  var quotes = [];
-  var lastShownId = null;
-  var editingId = null;
-  var openId = null;    /* expanded quote card */
-  var favOnly = false;
-
-  var $ = function (id) { return document.getElementById(id); };
-
-  function loadJSON(key, fallback) {
-    try {
-      var raw = localStorage.getItem(key);
-      var data = raw ? JSON.parse(raw) : fallback;
-      return Array.isArray(data) === Array.isArray(fallback) ? data : fallback;
-    } catch (e) {
-      return fallback;
-    }
+  /* ---- Config check ---- */
+  if (!config || !config.apiKey || config.apiKey.indexOf('PASTE_') === 0) {
+    $('boot-message').textContent = 'Quill isn’t connected to Firebase yet — open index.html and fill in QUILL_FIREBASE_CONFIG near the top with your project’s web config.';
+    throw new Error('Firebase config missing');
   }
 
-  function saveJSON(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
+  const app = initializeApp(config);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-  function uid(prefix) {
-    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  }
+  let me = null;          /* {uid, name} */
+  let family = [];        /* other users: {uid, name} */
+  let quotes = [];        /* my quotes, live from Firestore */
+  let unsubscribe = null; /* Firestore listener */
+  let lastShownId = null;
+  let editingId = null;
+  let openId = null;
+  let favOnly = false;
+  let authReady = false;
 
-  function fmtDate(iso) {
-    try {
-      return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
-    } catch (e) {
-      return '';
-    }
-  }
-
-  function copyText(text, onCopied, onManual) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(onCopied, onManual);
-    } else {
-      onManual();
-    }
-  }
-
-  /* ---- Password hashing ----
-     SHA-256 via Web Crypto where available; a simple fallback hash otherwise.
-     Either way this deters casual snooping on a shared device — it is not
-     bank-grade security, and the README says so. */
-  function fallbackHash(str) {
-    var h1 = 5381, h2 = 52711, i;
-    for (i = 0; i < str.length; i++) {
-      var c = str.charCodeAt(i);
-      h1 = (h1 * 33 ^ c) >>> 0;
-      h2 = (h2 * 31 + c) >>> 0;
-    }
-    return 'fb-' + h1.toString(16) + h2.toString(16);
-  }
-
-  function hashPassword(salt, password) {
-    var input = salt + ':' + password;
-    if (window.crypto && crypto.subtle && crypto.subtle.digest) {
-      var bytes = new TextEncoder().encode(input);
-      return crypto.subtle.digest('SHA-256', bytes).then(function (buf) {
-        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
-          return ('0' + b.toString(16)).slice(-2);
-        }).join('');
-      }, function () {
-        return fallbackHash(input);
-      });
-    }
-    return Promise.resolve(fallbackHash(input));
-  }
-
-  /* ---- Routing ----
-     The sign-in page and the app are separate pages with their own URLs:
-     #/login and #/app. Landing on #/app while signed out bounces to sign-in. */
+  /* ---- Routing: sign-in and app are separate pages ---- */
   function showPage(name) {
+    $('boot-view').hidden = name !== 'boot';
     $('login-view').hidden = name !== 'login';
     $('app-view').hidden = name !== 'app';
   }
 
   function route() {
+    if (!authReady) { showPage('boot'); return; }
     if (location.hash === '#/app') {
-      if (current) {
-        showPage('app');
-      } else {
-        location.replace('#/login');
-      }
+      if (me) showPage('app');
+      else location.replace('#/login');
     } else {
       if (location.hash !== '#/login') {
         try { history.replaceState(null, '', '#/login'); } catch (e) { location.hash = '#/login'; }
       }
       showPage('login');
-      renderLogin('');
     }
   }
   window.addEventListener('hashchange', route);
 
-  /* ---- Profiles & session ---- */
-  function saveProfiles() { saveJSON(PROFILES_KEY, profiles); }
+  function friendlyAuthError(err) {
+    const code = err && err.code || '';
+    if (code.includes('email-already-in-use')) return 'There’s already an account with that email — sign in on the left instead.';
+    if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return 'Email or password isn’t right.';
+    if (code.includes('weak-password')) return 'Password needs at least 6 characters.';
+    if (code.includes('invalid-email')) return 'That email doesn’t look right.';
+    if (code.includes('too-many-requests')) return 'Too many tries — wait a minute and try again.';
+    if (code.includes('network-request-failed')) return 'Can’t reach the server — check your connection.';
+    return 'Something went wrong (' + (code || 'unknown') + '). Try again.';
+  }
 
-  function quotesKey(profileId) { return QUOTES_PREFIX + profileId; }
+  /* ---- Auth state drives everything ---- */
+  onAuthStateChanged(auth, async (user) => {
+    authReady = true;
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
 
-  function signIn(profile) {
-    current = profile;
-    try { localStorage.setItem(SESSION_KEY, profile.id); } catch (e) {}
-    quotes = loadJSON(quotesKey(profile.id), []).filter(function (q) { return q && q.text; });
+    if (!user) {
+      me = null;
+      quotes = [];
+      family = [];
+      route();
+      return;
+    }
+
+    me = { uid: user.uid, name: user.displayName || (user.email || '').split('@')[0] };
+    $('whoami-name').textContent = me.name;
+
+    /* Keep the family directory entry fresh so others can share with us. */
+    try {
+      await setDoc(doc(db, 'users', me.uid), { name: me.name }, { merge: true });
+    } catch (e) { /* directory write is best-effort */ }
+
+    loadFamily();
+    checkLocalImport();
+
+    unsubscribe = onSnapshot(collection(db, 'users', me.uid, 'quotes'), (snap) => {
+      quotes = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        .filter((q) => q && typeof q.text === 'string' && q.text);
+      renderList();
+      if (!lastShownId || !quotes.some((q) => q.id === lastShownId)) showRandom();
+      else updateHeroFav();
+    }, (err) => {
+      $('backup-status').textContent = 'Lost the connection to your collection (' + (err.code || 'unknown') + ') — reload the page.';
+    });
+
     lastShownId = null;
     openId = null;
     favOnly = false;
@@ -545,192 +558,107 @@
     $('search').value = '';
     $('backup-box').value = '';
     $('backup-status').textContent = '';
-    $('whoami-name').textContent = profile.name;
-    renderList();
-    showRandom();
-    if (location.hash === '#/app') showPage('app');
-    else location.hash = '#/app';
-  }
 
-  function signOut() {
-    current = null;
-    quotes = [];
-    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
-    location.hash = '#/login';
-  }
+    if (location.hash === '#/app') { showPage('app'); } else { location.hash = '#/app'; route(); }
+  });
 
-  function saveQuotes() {
-    if (!current) return;
-    if (!saveJSON(quotesKey(current.id), quotes)) {
-      $('backup-status').textContent = 'Could not save to this browser’s storage — copy a backup so nothing is lost.';
+  async function loadFamily() {
+    try {
+      const snap = await getDocs(collection(db, 'users'));
+      family = snap.docs
+        .map((d) => ({ uid: d.id, name: (d.data() || {}).name || 'Someone' }))
+        .filter((u) => u.uid !== me.uid);
+    } catch (e) {
+      family = [];
     }
   }
 
-  function saveQuotesFor(profileId, list) {
-    return saveJSON(quotesKey(profileId), list);
-  }
-
-  /* One-time migration: quotes saved before profiles existed move into the
-     first profile created, so nobody's collection is lost by the upgrade. */
-  function migrateLegacyInto(profileId) {
-    var legacy = loadJSON(LEGACY_QUOTES_KEY, null);
-    if (!Array.isArray(legacy) || legacy.length === 0) return false;
-    saveJSON(quotesKey(profileId), legacy);
-    try { localStorage.removeItem(LEGACY_QUOTES_KEY); } catch (e) {}
-    return true;
-  }
-
-  /* ---- Sign-in page ---- */
-  function renderLogin(hint) {
-    $('login-hint').textContent = hint || '';
-    var list = $('profile-list');
-    list.textContent = '';
-    $('profiles-empty').hidden = profiles.length > 0;
-    $('newp').open = profiles.length === 0;
-    $('np-error').textContent = '';
-
-    profiles.forEach(function (p) {
-      var li = document.createElement('li');
-
-      var row = document.createElement('div');
-      row.className = 'profile-row';
-      var name = document.createElement('span');
-      name.className = 'pname';
-      name.textContent = p.name;
-      row.appendChild(name);
-      if (p.hash) {
-        var lock = document.createElement('span');
-        lock.className = 'lock';
-        lock.textContent = 'password';
-        row.appendChild(lock);
-      }
-      var enter = document.createElement('button');
-      enter.type = 'button';
-      enter.className = 'primary';
-      enter.textContent = 'Sign in';
-      row.appendChild(enter);
-      var del = document.createElement('button');
-      del.type = 'button';
-      del.className = 'quiet danger';
-      del.textContent = 'Delete';
-      row.appendChild(del);
-      li.appendChild(row);
-
-      var pwRow = document.createElement('form');
-      pwRow.className = 'pw-row';
-      pwRow.hidden = true;
-      var pwInput = document.createElement('input');
-      pwInput.type = 'password';
-      pwInput.autocomplete = 'current-password';
-      pwInput.placeholder = 'Password for ' + p.name;
-      pwInput.setAttribute('aria-label', 'Password for ' + p.name);
-      var pwGo = document.createElement('button');
-      pwGo.type = 'submit';
-      pwGo.className = 'primary';
-      pwGo.textContent = 'Go';
-      var pwErr = document.createElement('p');
-      pwErr.className = 'form-error';
-      pwRow.appendChild(pwInput);
-      pwRow.appendChild(pwGo);
-      li.appendChild(pwRow);
-      li.appendChild(pwErr);
-
-      var pendingAction = 'signin';
-
-      function openPwRow(action, buttonLabel) {
-        pendingAction = action;
-        pwGo.textContent = buttonLabel;
-        pwRow.hidden = false;
-        pwErr.textContent = '';
-        pwInput.value = '';
-        pwInput.focus();
-      }
-
-      function deleteProfile() {
-        if (!confirm('Delete the profile “' + p.name + '” and every quote in it? This can’t be undone.')) return;
-        profiles = profiles.filter(function (x) { return x.id !== p.id; });
-        saveProfiles();
-        try { localStorage.removeItem(quotesKey(p.id)); } catch (e) {}
-        renderLogin('Profile “' + p.name + '” deleted.');
-      }
-
-      enter.addEventListener('click', function () {
-        if (!p.hash) { signIn(p); return; }
-        if (pwRow.hidden || pendingAction !== 'signin') openPwRow('signin', 'Go');
-        else pwInput.focus();
-      });
-
-      del.addEventListener('click', function () {
-        if (!p.hash) { deleteProfile(); return; }
-        openPwRow('delete', 'Confirm delete');
-      });
-
-      pwRow.addEventListener('submit', function (e) {
-        e.preventDefault();
-        hashPassword(p.salt, pwInput.value).then(function (h) {
-          if (h !== p.hash) {
-            pwErr.textContent = 'That’s not it — try again.';
-            pwInput.select();
-            return;
-          }
-          if (pendingAction === 'delete') deleteProfile();
-          else signIn(p);
-        });
-      });
-
-      list.appendChild(li);
-    });
-  }
-
-  $('newp-form').addEventListener('submit', function (e) {
+  /* ---- Sign in / sign up / sign out ---- */
+  $('signin-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    var name = $('np-name').value.trim();
-    var pass = $('np-pass').value;
-    var pass2 = $('np-pass2').value;
-    var err = $('np-error');
-    err.textContent = '';
-
-    if (!name) { err.textContent = 'Give the profile a name.'; return; }
-    if (profiles.some(function (p) { return p.name.toLowerCase() === name.toLowerCase(); })) {
-      err.textContent = 'There’s already a profile called “' + name + '”.';
-      return;
-    }
-    if (pass !== pass2) { err.textContent = 'The passwords don’t match.'; return; }
-
-    var profile = { id: uid('p'), name: name, salt: '', hash: '', created: new Date().toISOString() };
-    var finish = function () {
-      var isFirst = profiles.length === 0;
-      profiles.push(profile);
-      saveProfiles();
-      if (isFirst) migrateLegacyInto(profile.id);
-      $('newp-form').reset();
-      signIn(profile);
-    };
-
-    if (pass) {
-      profile.salt = uid('s');
-      hashPassword(profile.salt, pass).then(function (h) {
-        profile.hash = h;
-        finish();
-      });
-    } else {
-      finish();
+    $('si-error').textContent = '';
+    $('si-submit').disabled = true;
+    try {
+      await signInWithEmailAndPassword(auth, $('si-email').value.trim(), $('si-pass').value);
+      $('signin-form').reset();
+    } catch (err) {
+      $('si-error').textContent = friendlyAuthError(err);
+    } finally {
+      $('si-submit').disabled = false;
     }
   });
 
+  $('si-forgot').addEventListener('click', async () => {
+    const email = $('si-email').value.trim();
+    if (!email) { $('si-error').textContent = 'Type your email above first, then press “Forgot password?”.'; return; }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      $('si-error').textContent = '';
+      $('login-hint').textContent = 'Password reset email sent to ' + email + ' — check your inbox.';
+    } catch (err) {
+      $('si-error').textContent = friendlyAuthError(err);
+    }
+  });
+
+  $('signup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('su-error').textContent = '';
+    const name = $('su-name').value.trim();
+    if (!name) { $('su-error').textContent = 'Tell us your name — it’s how family sees you when sharing.'; return; }
+    $('su-submit').disabled = true;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, $('su-email').value.trim(), $('su-pass').value);
+      await updateProfile(cred.user, { displayName: name });
+      await setDoc(doc(db, 'users', cred.user.uid), { name }, { merge: true });
+      me = { uid: cred.user.uid, name };
+      $('whoami-name').textContent = name;
+      $('signup-form').reset();
+    } catch (err) {
+      $('su-error').textContent = friendlyAuthError(err);
+    } finally {
+      $('su-submit').disabled = false;
+    }
+  });
+
+  $('signout').addEventListener('click', () => { signOut(auth); });
+
+  /* ---- Quote CRUD ---- */
+  function quoteData(text, by, note) {
+    return { text, by, note, added: new Date().toISOString(), fav: false, sharedBy: '' };
+  }
+
+  async function addQuote(data) {
+    return addDoc(collection(db, 'users', me.uid, 'quotes'), data);
+  }
+
+  function fmtDate(iso) {
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    } catch (e) { return ''; }
+  }
+
+  function copyToClipboard(text, onCopied, onManual) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onCopied, onManual);
+    } else {
+      onManual();
+    }
+  }
+
   /* ---- Favorites ---- */
-  function toggleFav(id) {
-    var q = quotes.find(function (x) { return x.id === id; });
+  async function toggleFav(id) {
+    const q = quotes.find((x) => x.id === id);
     if (!q) return;
-    q.fav = !q.fav;
-    saveQuotes();
-    renderList();
-    if (lastShownId === id) updateHeroFav();
+    try {
+      await updateDoc(doc(db, 'users', me.uid, 'quotes', id), { fav: !q.fav });
+    } catch (e) {
+      $('backup-status').textContent = 'Couldn’t update the favorite — check your connection.';
+    }
   }
 
   function updateHeroFav() {
-    var btn = $('hero-fav');
-    var q = quotes.find(function (x) { return x.id === lastShownId; });
+    const btn = $('hero-fav');
+    const q = quotes.find((x) => x.id === lastShownId);
     if (!q) { btn.hidden = true; return; }
     btn.hidden = false;
     btn.innerHTML = q.fav ? '&#9733; Favorited' : '&#9734; Favorite';
@@ -739,30 +667,29 @@
 
   /* ---- Random quote ---- */
   function showRandom() {
-    var hero = $('hero');
+    const hero = $('hero');
     if (quotes.length === 0) {
       $('hero-text').textContent = 'Nothing here yet.';
       $('hero-who').textContent = 'Add the first quote you can remember below — the rest come back once you start.';
       $('hero-note').hidden = true;
       $('shuffle').hidden = true;
       $('hero-fav').hidden = true;
+      lastShownId = null;
       return;
     }
     $('shuffle').hidden = false;
-    var pool = quotes.length > 1
-      ? quotes.filter(function (q) { return q.id !== lastShownId; })
-      : quotes;
-    var q = pool[Math.floor(Math.random() * pool.length)];
+    const pool = quotes.length > 1 ? quotes.filter((q) => q.id !== lastShownId) : quotes;
+    const q = pool[Math.floor(Math.random() * pool.length)];
     lastShownId = q.id;
 
     $('hero-text').textContent = '“' + q.text + '”';
-    var who = $('hero-who');
+    const who = $('hero-who');
     who.textContent = '';
     who.appendChild(document.createTextNode('— '));
-    var strong = document.createElement('strong');
+    const strong = document.createElement('strong');
     strong.textContent = q.by || 'Unknown';
     who.appendChild(strong);
-    var note = $('hero-note');
+    const note = $('hero-note');
     note.textContent = q.note || '';
     note.hidden = !q.note;
     updateHeroFav();
@@ -774,59 +701,36 @@
 
   /* ---- Sharing ---- */
   function shareAsText(q) {
-    var line = '“' + q.text + '” — ' + (q.by || 'Unknown');
+    let line = '“' + q.text + '” — ' + (q.by || 'Unknown');
     if (q.note) line += ' (' + q.note + ')';
     return line;
   }
 
-  function shareAsCode(q) {
-    return JSON.stringify([{
-      id: uid('q'),
-      text: q.text,
-      by: q.by || '',
-      note: q.note || '',
-      added: q.added || new Date().toISOString(),
-      sharedBy: current ? current.name : ''
-    }]);
-  }
-
-  function sendCopyTo(profile, q, statusEl) {
-    var theirs = loadJSON(quotesKey(profile.id), []).filter(function (x) { return x && x.text; });
-    var dupe = theirs.some(function (x) {
-      return x.text === q.text && (x.by || '') === (q.by || '');
-    });
-    if (dupe) {
-      statusEl.textContent = profile.name + ' already has this one.';
-      return;
-    }
-    theirs.push({
-      id: uid('q'),
-      text: q.text,
-      by: q.by || '',
-      note: q.note || '',
-      added: new Date().toISOString(),
-      sharedBy: current.name
-    });
-    if (saveQuotesFor(profile.id, theirs)) {
-      statusEl.textContent = 'Sent — it’ll be in ' + profile.name + '’s collection next time they sign in.';
-    } else {
-      statusEl.textContent = 'Couldn’t save into ' + profile.name + '’s collection — this browser’s storage may be full.';
+  async function sendCopyTo(person, q, statusEl) {
+    try {
+      await addDoc(collection(db, 'users', person.uid, 'quotes'), {
+        text: q.text, by: q.by || '', note: q.note || '',
+        added: new Date().toISOString(), fav: false, sharedBy: me.name
+      });
+      statusEl.textContent = 'Sent — it’s in ' + person.name + '’s collection now, on every device.';
+    } catch (e) {
+      statusEl.textContent = 'Couldn’t send to ' + person.name + ' (' + (e.code || 'error') + ').';
     }
   }
 
   /* ---- List ---- */
   function renderList() {
-    var query = $('search').value.trim().toLowerCase();
-    var list = $('list');
-    var empty = $('empty');
+    const query = $('search').value.trim().toLowerCase();
+    const list = $('list');
+    const empty = $('empty');
     list.textContent = '';
 
-    var shown = quotes.filter(function (q) {
+    const shown = quotes.filter((q) => {
       if (favOnly && !q.fav) return false;
       if (!query) return true;
       return (q.text + ' ' + (q.by || '') + ' ' + (q.note || '')).toLowerCase().indexOf(query) !== -1;
     });
-    shown.sort(function (a, b) { return (b.added || '').localeCompare(a.added || ''); });
+    shown.sort((a, b) => (b.added || '').localeCompare(a.added || ''));
 
     empty.hidden = shown.length > 0;
     if (shown.length === 0) {
@@ -839,14 +743,14 @@
       }
     }
 
-    shown.forEach(function (q) {
-      var li = document.createElement('li');
-      var isOpen = openId === q.id;
+    shown.forEach((q) => {
+      const li = document.createElement('li');
+      const isOpen = openId === q.id;
       if (isOpen) li.classList.add('open');
 
-      var bq = document.createElement('blockquote');
+      const bq = document.createElement('blockquote');
       if (q.fav) {
-        var star = document.createElement('span');
+        const star = document.createElement('span');
         star.className = 'fav-mark';
         star.textContent = '★';
         star.setAttribute('aria-label', 'Favorite');
@@ -856,133 +760,125 @@
       li.appendChild(bq);
 
       if (q.note) {
-        var note = document.createElement('p');
+        const note = document.createElement('p');
         note.className = 'note';
         note.textContent = q.note;
         li.appendChild(note);
       }
 
-      var meta = document.createElement('div');
+      const meta = document.createElement('div');
       meta.className = 'meta';
-      var by = document.createElement('span');
+      const by = document.createElement('span');
       by.className = 'by';
       by.textContent = q.by || 'Unknown';
       meta.appendChild(by);
       if (q.sharedBy) {
-        var shared = document.createElement('span');
+        const shared = document.createElement('span');
         shared.className = 'shared';
         shared.textContent = 'shared by ' + q.sharedBy;
         meta.appendChild(shared);
       }
-      var date = document.createElement('span');
+      const date = document.createElement('span');
       date.className = 'date';
       date.textContent = q.added ? fmtDate(q.added) : '';
       meta.appendChild(date);
-      var spacer = document.createElement('span');
+      const spacer = document.createElement('span');
       spacer.className = 'spacer';
       meta.appendChild(spacer);
-      var hint = document.createElement('span');
+      const hint = document.createElement('span');
       hint.className = 'hint';
       hint.textContent = isOpen ? 'click to close' : 'click for actions';
       meta.appendChild(hint);
       li.appendChild(meta);
 
       if (isOpen) {
-        var actions = document.createElement('div');
+        const actions = document.createElement('div');
         actions.className = 'actions';
 
-        var fav = document.createElement('button');
+        const fav = document.createElement('button');
         fav.type = 'button';
         fav.innerHTML = q.fav ? '&#9733; Favorited' : '&#9734; Favorite';
         if (q.fav) fav.classList.add('star');
-        fav.addEventListener('click', function () { toggleFav(q.id); });
+        fav.addEventListener('click', () => toggleFav(q.id));
         actions.appendChild(fav);
 
-        var shareBtn = document.createElement('button');
+        const shareBtn = document.createElement('button');
         shareBtn.type = 'button';
         shareBtn.textContent = 'Share';
         actions.appendChild(shareBtn);
 
-        var edit = document.createElement('button');
+        const edit = document.createElement('button');
         edit.type = 'button';
         edit.className = 'quiet';
         edit.textContent = 'Edit';
-        edit.addEventListener('click', function () { startEdit(q.id); });
+        edit.addEventListener('click', () => startEdit(q.id));
         actions.appendChild(edit);
 
-        var del = document.createElement('button');
+        const del = document.createElement('button');
         del.type = 'button';
         del.className = 'quiet danger';
         del.textContent = 'Delete';
-        del.addEventListener('click', function () { removeQuote(q.id); });
+        del.addEventListener('click', () => removeQuote(q.id));
         actions.appendChild(del);
 
         li.appendChild(actions);
 
-        var sharePanel = document.createElement('div');
+        const sharePanel = document.createElement('div');
         sharePanel.className = 'share-panel';
         sharePanel.hidden = true;
 
-        var others = profiles.filter(function (p) { return p.id !== current.id; });
-        var shareStatus = document.createElement('p');
+        const shareStatus = document.createElement('p');
         shareStatus.className = 'status';
 
-        if (others.length > 0) {
-          var t1 = document.createElement('p');
+        if (family.length > 0) {
+          const t1 = document.createElement('p');
           t1.className = 'share-title';
-          t1.textContent = 'Send a copy to someone on this device:';
+          t1.textContent = 'Send it straight to:';
           sharePanel.appendChild(t1);
-          var row1 = document.createElement('div');
+          const row1 = document.createElement('div');
           row1.className = 'share-row';
-          others.forEach(function (p) {
-            var b = document.createElement('button');
+          family.forEach((person) => {
+            const b = document.createElement('button');
             b.type = 'button';
-            b.textContent = p.name;
-            b.addEventListener('click', function () { sendCopyTo(p, q, shareStatus); });
+            b.textContent = person.name;
+            b.addEventListener('click', () => sendCopyTo(person, q, shareStatus));
             row1.appendChild(b);
           });
           sharePanel.appendChild(row1);
+        } else {
+          const t1 = document.createElement('p');
+          t1.className = 'share-title';
+          t1.textContent = 'Nobody else has an account yet — once family sign up, they’ll show up here.';
+          sharePanel.appendChild(t1);
         }
 
-        var t2 = document.createElement('p');
+        const t2 = document.createElement('p');
         t2.className = 'share-title';
         t2.textContent = 'Or copy it to send in a message:';
         sharePanel.appendChild(t2);
-        var row2 = document.createElement('div');
+        const row2 = document.createElement('div');
         row2.className = 'share-row';
-        var copyTxt = document.createElement('button');
+        const copyTxt = document.createElement('button');
         copyTxt.type = 'button';
         copyTxt.textContent = 'Copy as text';
-        copyTxt.addEventListener('click', function () {
-          copyText(shareAsText(q), function () {
+        copyTxt.addEventListener('click', () => {
+          copyToClipboard(shareAsText(q), () => {
             shareStatus.textContent = 'Copied — paste it anywhere.';
-          }, function () {
+          }, () => {
             shareStatus.textContent = shareAsText(q);
           });
         });
-        var copyCode = document.createElement('button');
-        copyCode.type = 'button';
-        copyCode.textContent = 'Copy for Quill';
-        copyCode.title = 'A snippet the other person pastes into their Backup box';
-        copyCode.addEventListener('click', function () {
-          copyText(shareAsCode(q), function () {
-            shareStatus.textContent = 'Copied — they paste it into “Backup, restore & shared quotes” in their Quill.';
-          }, function () {
-            shareStatus.textContent = shareAsCode(q);
-          });
-        });
         row2.appendChild(copyTxt);
-        row2.appendChild(copyCode);
         sharePanel.appendChild(row2);
         sharePanel.appendChild(shareStatus);
         li.appendChild(sharePanel);
 
-        shareBtn.addEventListener('click', function () {
+        shareBtn.addEventListener('click', () => {
           sharePanel.hidden = !sharePanel.hidden;
         });
       }
 
-      li.addEventListener('click', function (e) {
+      li.addEventListener('click', (e) => {
         if (e.target.closest('button, input, form, a')) return;
         openId = isOpen ? null : q.id;
         renderList();
@@ -1000,11 +896,11 @@
     renderList();
   });
 
-  $('hero-fav').addEventListener('click', function () {
+  $('hero-fav').addEventListener('click', () => {
     if (lastShownId) toggleFav(lastShownId);
   });
 
-  /* ---- Add / edit ---- */
+  /* ---- Add / edit / delete ---- */
   function resetForm() {
     editingId = null;
     $('add-form').reset();
@@ -1015,7 +911,7 @@
   }
 
   function startEdit(id) {
-    var q = quotes.find(function (x) { return x.id === id; });
+    const q = quotes.find((x) => x.id === id);
     if (!q) return;
     editingId = id;
     $('f-text').value = q.text;
@@ -1028,69 +924,68 @@
     $('f-text').focus();
   }
 
-  function removeQuote(id) {
-    var q = quotes.find(function (x) { return x.id === id; });
+  async function removeQuote(id) {
+    const q = quotes.find((x) => x.id === id);
     if (!q) return;
     if (!confirm('Delete this quote by ' + (q.by || 'Unknown') + '? This can’t be undone.')) return;
-    quotes = quotes.filter(function (x) { return x.id !== id; });
     if (editingId === id) resetForm();
     if (openId === id) openId = null;
-    saveQuotes();
-    renderList();
-    if (lastShownId === id) showRandom();
+    try {
+      await deleteDoc(doc(db, 'users', me.uid, 'quotes', id));
+    } catch (e) {
+      $('backup-status').textContent = 'Couldn’t delete — check your connection.';
+    }
   }
 
-  $('add-form').addEventListener('submit', function (e) {
+  $('add-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    var text = $('f-text').value.trim();
-    var by = $('f-by').value.trim();
-    var note = $('f-note').value.trim();
+    const text = $('f-text').value.trim();
+    const by = $('f-by').value.trim();
+    const note = $('f-note').value.trim();
     if (!text || !by) return;
+    $('f-submit').disabled = true;
 
-    if (editingId) {
-      var q = quotes.find(function (x) { return x.id === editingId; });
-      if (q) { q.text = text; q.by = by; q.note = note; }
-      var wasShown = lastShownId === editingId;
-      resetForm();
-      saveQuotes();
-      renderList();
-      if (wasShown) showRandom();
-    } else {
-      quotes.push({ id: uid('q'), text: text, by: by, note: note, added: new Date().toISOString() });
-      var first = quotes.length === 1;
-      resetForm();
-      saveQuotes();
-      renderList();
-      if (first) showRandom();
-      $('f-hint').textContent = 'Saved.';
-      setTimeout(function () { if (!editingId) $('f-hint').textContent = ''; }, 2000);
+    try {
+      if (editingId) {
+        await updateDoc(doc(db, 'users', me.uid, 'quotes', editingId), { text, by, note });
+        resetForm();
+      } else {
+        await addQuote(quoteData(text, by, note));
+        resetForm();
+        $('f-hint').textContent = 'Saved.';
+        setTimeout(() => { if (!editingId) $('f-hint').textContent = ''; }, 2000);
+      }
+    } catch (err) {
+      $('f-hint').textContent = 'Couldn’t save (' + (err.code || 'error') + ') — try again.';
+    } finally {
+      $('f-submit').disabled = false;
     }
   });
 
   $('f-cancel').addEventListener('click', resetForm);
   $('shuffle').addEventListener('click', showRandom);
   $('search').addEventListener('input', renderList);
-  $('signout').addEventListener('click', signOut);
 
-  /* ---- Backup / restore / shared quotes ---- */
-  $('backup-copy').addEventListener('click', function () {
-    var payload = JSON.stringify(quotes, null, 2);
+  /* ---- Bulk copy / paste ---- */
+  $('backup-copy').addEventListener('click', () => {
+    const payload = JSON.stringify(
+      quotes.map(({ text, by, note, added, fav, sharedBy }) => ({ text, by, note, added, fav, sharedBy })),
+      null, 2
+    );
     $('backup-box').value = payload;
-    copyText(payload, function () {
-      $('backup-status').textContent = 'Backup copied — paste it somewhere safe (a note, an email to yourself).';
-    }, function () {
+    copyToClipboard(payload, () => {
+      $('backup-status').textContent = 'Copied your whole collection as text.';
+    }, () => {
       $('backup-box').select();
-      $('backup-status').textContent = 'Backup is in the box above — copy it with Ctrl/Cmd+C.';
+      $('backup-status').textContent = 'Your collection is in the box above — copy it with Ctrl/Cmd+C.';
     });
   });
 
-  $('backup-load').addEventListener('click', function () {
-    var raw = $('backup-box').value.trim();
-    if (!raw) { $('backup-status').textContent = 'Paste a backup or a shared quote into the box first.'; return; }
-    var incoming;
-    try {
-      incoming = JSON.parse(raw);
-    } catch (e) {
+  $('backup-load').addEventListener('click', async () => {
+    const raw = $('backup-box').value.trim();
+    if (!raw) { $('backup-status').textContent = 'Paste quotes into the box first.'; return; }
+    let incoming;
+    try { incoming = JSON.parse(raw); } catch (e) {
       $('backup-status').textContent = 'That doesn’t look like Quill data — paste the whole thing.';
       return;
     }
@@ -1099,51 +994,65 @@
       $('backup-status').textContent = 'That doesn’t look like Quill data — paste the whole thing.';
       return;
     }
-    var added = 0, updated = 0;
-    incoming.forEach(function (inQ) {
-      if (!inQ || typeof inQ.text !== 'string' || !inQ.text.trim()) return;
-      var clean = {
-        id: typeof inQ.id === 'string' ? inQ.id : uid('q'),
-        text: inQ.text,
-        by: typeof inQ.by === 'string' ? inQ.by : '',
-        note: typeof inQ.note === 'string' ? inQ.note : '',
-        added: typeof inQ.added === 'string' ? inQ.added : new Date().toISOString(),
-        fav: !!inQ.fav,
-        sharedBy: typeof inQ.sharedBy === 'string' ? inQ.sharedBy : ''
-      };
-      var existing = quotes.find(function (x) { return x.id === clean.id; });
-      if (existing) {
-        existing.text = clean.text; existing.by = clean.by;
-        existing.note = clean.note; existing.added = clean.added;
-        existing.fav = clean.fav; existing.sharedBy = clean.sharedBy;
-        updated++;
-      } else {
-        quotes.push(clean);
-        added++;
-      }
-    });
-    saveQuotes();
-    renderList();
-    showRandom();
-    $('backup-status').textContent = 'Loaded: ' + added + ' new, ' + updated + ' updated. Nothing was deleted.';
+    await importQuotes(incoming, $('backup-status'));
   });
 
-  /* ---- Boot ---- */
-  var sessionId = null;
-  try { sessionId = localStorage.getItem(SESSION_KEY); } catch (e) {}
-  var remembered = profiles.find(function (p) { return p.id === sessionId; });
-  if (remembered) {
-    current = remembered;
-    quotes = loadJSON(quotesKey(remembered.id), []).filter(function (q) { return q && q.text; });
-    $('whoami-name').textContent = remembered.name;
-    renderList();
-    showRandom();
-    if (location.hash !== '#/login') {
-      try { history.replaceState(null, '', '#/app'); } catch (e) {}
+  async function importQuotes(rows, statusEl) {
+    let added = 0, skipped = 0, failed = 0;
+    statusEl.textContent = 'Adding…';
+    for (const inQ of rows) {
+      if (!inQ || typeof inQ.text !== 'string' || !inQ.text.trim()) continue;
+      const dupe = quotes.some((x) => x.text === inQ.text && (x.by || '') === (inQ.by || ''));
+      if (dupe) { skipped++; continue; }
+      try {
+        await addQuote({
+          text: inQ.text,
+          by: typeof inQ.by === 'string' ? inQ.by : '',
+          note: typeof inQ.note === 'string' ? inQ.note : '',
+          added: typeof inQ.added === 'string' ? inQ.added : new Date().toISOString(),
+          fav: !!inQ.fav,
+          sharedBy: typeof inQ.sharedBy === 'string' ? inQ.sharedBy : ''
+        });
+        added++;
+      } catch (e) { failed++; }
     }
+    statusEl.textContent = 'Added ' + added + (skipped ? ', skipped ' + skipped + ' you already had' : '') +
+      (failed ? ', ' + failed + ' failed' : '') + '. Nothing was deleted.';
   }
+
+  /* ---- One-time import of quotes saved by the old offline Quill ---- */
+  function checkLocalImport() {
+    const found = [];
+    try {
+      const legacy = JSON.parse(localStorage.getItem('quill.quotes.v1') || 'null');
+      if (Array.isArray(legacy) && legacy.length) found.push({ label: 'earlier quotes', rows: legacy });
+      const profiles = JSON.parse(localStorage.getItem('quill.profiles.v1') || '[]');
+      if (Array.isArray(profiles)) {
+        profiles.forEach((p) => {
+          const rows = JSON.parse(localStorage.getItem('quill.quotes.v1.' + p.id) || 'null');
+          if (Array.isArray(rows) && rows.length) {
+            found.push({ label: p.name + '’s ' + rows.length + ' quote' + (rows.length === 1 ? '' : 's'), rows });
+          }
+        });
+      }
+    } catch (e) { /* nothing importable */ }
+
+    const box = $('local-import');
+    const buttons = $('local-import-buttons');
+    buttons.textContent = '';
+    box.hidden = found.length === 0;
+    if (found.length === 0) return;
+    $('local-import-label').textContent = 'This browser has quotes from the offline version of Quill. Bring them into your account:';
+    found.forEach((f) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = 'Import ' + f.label;
+      b.addEventListener('click', () => importQuotes(f.rows, $('backup-status')));
+      buttons.appendChild(b);
+    });
+  }
+
   route();
-})();
 </script>
 </body>
 </html>

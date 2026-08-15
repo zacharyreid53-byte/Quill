@@ -2,34 +2,46 @@
 
 A little app for keeping the funny things your friends and family say, and reading one back at random.
 
-## Using it
+Two versions live in this repo:
 
-Open `index.html` in any browser — no install, no server.
+- **`index.html`** — the cloud version. Real accounts (email + password via Firebase Authentication), quotes stored in Cloud Firestore, so everything saves automatically and follows you to any device. Sharing sends a quote straight into another person's collection, wherever they are.
+- **`offline.html`** — the original no-setup version. Everything stays in the browser's localStorage with device-local profiles. Open it in any browser and it just works; use its backup box to move quotes between devices. The cloud version offers a one-click import of anything saved here.
 
-- **Sign-in page** — the app opens on its own sign-in page (`#/login`); the rest of the app lives at `#/app` and bounces you back to sign-in if you're not signed in. Each person creates a profile with an optional password and gets their own separate quote collection. Passwords are hashed before they're stored and keep casual snooping out on a shared device — but everything lives in the browser's own storage, so treat it as a family bookshelf, not a bank vault.
-- **Random quote** — the big card at the top shows one of your quotes; press **Another one** to shuffle, or the star to favorite the one on screen.
-- **Clickable quotes** — click any quote in the collection to open its actions: favorite it, share it, edit, or delete. The **★ Favorites** button next to search filters the list down to your starred quotes.
-- **Sharing** — from a quote's Share panel you can send a copy straight into another profile on the same device (it shows up marked "shared by you"), copy it as plain text for a group chat, or copy a Quill snippet the other person pastes into their own Backup box on any device.
-- **Add a quote** — write it the way they said it, note who said it, and optionally the context ("Thanksgiving 2019, after the turkey incident").
-- **The collection** — every quote you've saved, newest first, with search across quotes, people, and context. Edit or delete from each card.
-- **Backup & restore** — quotes are stored in the browser you're using (localStorage), per profile, so they stay on that device. The backup section copies your collection as text you can save in a note or email; paste it into your profile on another device to bring it over. Loading a backup merges — it never deletes what's already there.
+## Features (both versions)
 
-Profiles are per-browser: a profile made on the family laptop doesn't exist on your phone until you create it there and paste in a backup. Quotes saved before profiles existed are moved into the first profile created, so nothing is lost by upgrading.
+- **Sign-in page** on its own route (`#/login`); the app lives at `#/app` and redirects you to sign-in when you're signed out.
+- **Random quote** — the big card up top; press **Another one** to shuffle, or the star to favorite what's on screen.
+- **Clickable quotes** — click any quote in the collection for actions: favorite, share, edit, delete. The **★ Favorites** button filters the list to starred quotes.
+- **Sharing** — send a copy to another user (cloud: any family member with an account; offline: another profile on the same device), or copy the quote as plain text for a group chat.
+
+## Setting up the cloud version
+
+One-time setup in the [Firebase console](https://console.firebase.google.com), all on the free plan:
+
+1. **Add project** (Analytics not needed).
+2. **Build → Authentication → Get started** → Sign-in method → enable **Email/Password**.
+3. **Build → Firestore Database → Create database** → production mode, pick a region near you.
+4. In Firestore's **Rules** tab, paste the contents of [`firestore.rules`](firestore.rules) and **Publish**. The rules make each person's quotes private to them, while letting signed-in family members *add* a shared quote to someone's collection (never read or change it).
+5. **Project settings (gear) → Your apps → Web app (`</>`)** → register the app → copy the `firebaseConfig` values into `QUILL_FIREBASE_CONFIG` near the top of `index.html`. These values aren't secrets — your security rules are what protect the data.
+6. Host the file somewhere with a real URL (Firebase auth won't run from a double-clicked file). Easiest: GitHub Pages — repo **Settings → Pages → Deploy from a branch**. Then add that domain (e.g. `yourname.github.io`) in Firebase **Authentication → Settings → Authorized domains**.
+
+Then everyone creates an account on the sign-in page, and their names appear in each other's Share panels automatically.
 
 ## Data format
 
-Backups are a JSON array of quotes:
+Bulk import/export (and offline backups) use a JSON array of quotes:
 
 ```json
 [
   {
-    "id": "q...",
     "text": "I'm not saying it was my fault, but the smoke alarm agreed with me.",
     "by": "Uncle Ray",
     "note": "Thanksgiving 2019",
-    "added": "2026-08-15T00:00:00.000Z"
+    "added": "2026-08-15T00:00:00.000Z",
+    "fav": true,
+    "sharedBy": ""
   }
 ]
 ```
 
-You can hand-edit this or bulk-add old quotes by pasting your own array into the restore box.
+Paste an array like this into the app's backup box to bulk-add old quotes you have written down elsewhere.
