@@ -70,6 +70,16 @@
   }
   .wordmark .nib { color: var(--mark); }
   .tagline { color: var(--ink-soft); font-size: 0.9rem; margin: 0.1rem 0 0; }
+  .whoami {
+    text-align: right;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+  }
+  .whoami .name { color: var(--ink); font-weight: 600; }
   .count {
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size: 0.8rem;
@@ -158,7 +168,7 @@
     margin: 0 0 0.75rem;
   }
 
-  form.add {
+  form.add, .panel {
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 4px;
@@ -178,8 +188,9 @@
     width: 100%;
   }
   textarea { resize: vertical; min-height: 4.5rem; font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: 1.05rem; }
-  .form-actions { display: flex; gap: 0.6rem; align-items: center; }
+  .form-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
   .form-hint { font-size: 0.8rem; color: var(--ink-soft); margin: 0; }
+  .form-error { font-size: 0.85rem; color: var(--danger); margin: 0; min-height: 1.3em; }
 
   .search { margin-bottom: 1rem; }
 
@@ -221,21 +232,92 @@
     font-size: 0.95rem;
   }
 
-  details.backup { border-top: 1px solid var(--line); padding-top: 1.25rem; }
-  details.backup summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); }
-  details.backup .inner { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+  /* Login */
+  .login-intro {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.3rem;
+    margin: 0;
+    text-wrap: balance;
+  }
+  ul.profiles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  ul.profiles li {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .profile-row { display: flex; align-items: center; gap: 0.75rem; }
+  .profile-row .pname { font-weight: 600; font-size: 1.05rem; flex: 1; }
+  .profile-row .lock { color: var(--ink-soft); font-size: 0.8rem; }
+  .pw-row { display: flex; gap: 0.6rem; align-items: center; }
+  .pw-row input { flex: 1; }
+
+  details.backup, details.newp { border-top: 1px solid var(--line); padding-top: 1.25rem; }
+  details summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); }
+  details .inner { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
   details.backup textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.75rem; min-height: 6rem; }
   .backup-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
   .status { font-size: 0.85rem; color: var(--ink-soft); margin: 0; min-height: 1.3em; }
 </style>
 
-<div class="wrap">
+<!-- ============ Login view ============ -->
+<div class="wrap" id="login-view" hidden>
   <header>
     <div>
       <h1 class="wordmark">Quill<span class="nib">.</span></h1>
       <p class="tagline">The funny things they said.</p>
     </div>
-    <span class="count" id="count"></span>
+  </header>
+
+  <section class="hero">
+    <span class="mark" aria-hidden="true">&ldquo;</span>
+    <p class="login-intro" id="login-intro">Who&rsquo;s this?</p>
+    <p class="form-hint" id="login-hint" style="margin-top:0.75rem;"></p>
+  </section>
+
+  <section>
+    <h2>Profiles</h2>
+    <ul class="profiles" id="profile-list"></ul>
+    <div class="empty" id="profiles-empty" hidden>No profiles yet — make yours below.</div>
+  </section>
+
+  <details class="newp" id="newp" open>
+    <summary>New profile</summary>
+    <div class="inner">
+      <form class="panel" id="newp-form">
+        <label>Your name
+          <input id="np-name" required maxlength="40" placeholder="Zach">
+        </label>
+        <label>Password <span style="text-transform:none;">(optional — keeps others on this device out of your collection)</span>
+          <input id="np-pass" type="password" autocomplete="new-password" placeholder="Leave blank for no password">
+        </label>
+        <label>Repeat password
+          <input id="np-pass2" type="password" autocomplete="new-password" placeholder="Only if you set one">
+        </label>
+        <div class="form-actions">
+          <button class="primary" type="submit">Create profile</button>
+          <p class="form-error" id="np-error"></p>
+        </div>
+      </form>
+    </div>
+  </details>
+</div>
+
+<!-- ============ App view ============ -->
+<div class="wrap" id="app-view" hidden>
+  <header>
+    <div>
+      <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      <p class="tagline">The funny things they said.</p>
+    </div>
+    <div class="whoami">
+      <span class="name" id="whoami-name"></span>
+      <span class="count" id="count"></span>
+      <button class="quiet" id="signout" type="button">Sign out</button>
+    </div>
   </header>
 
   <section class="hero" id="hero" aria-live="polite">
@@ -280,7 +362,7 @@
   <details class="backup">
     <summary>Backup &amp; restore</summary>
     <div class="inner">
-      <p class="form-hint">Your quotes live in this browser. Copy a backup now and then, and paste it here on another device to bring them over.</p>
+      <p class="form-hint">Your quotes live in this browser, under your profile. Copy a backup now and then, and paste it into your profile on another device to bring them over.</p>
       <textarea id="backup-box" aria-label="Backup data" placeholder='Paste a backup here, then press "Load from backup"'></textarea>
       <div class="backup-actions">
         <button type="button" id="backup-copy">Copy backup</button>
@@ -295,33 +377,40 @@
 (function () {
   'use strict';
 
-  var STORE_KEY = 'quill.quotes.v1';
-  var quotes = load();
+  var PROFILES_KEY = 'quill.profiles.v1';
+  var SESSION_KEY = 'quill.session.v1';
+  var QUOTES_PREFIX = 'quill.quotes.v1.';
+  var LEGACY_QUOTES_KEY = 'quill.quotes.v1';
+
+  var profiles = loadJSON(PROFILES_KEY, []);
+  var current = null;   /* signed-in profile */
+  var quotes = [];
   var lastShownId = null;
   var editingId = null;
 
   var $ = function (id) { return document.getElementById(id); };
 
-  function load() {
+  function loadJSON(key, fallback) {
     try {
-      var raw = localStorage.getItem(STORE_KEY);
-      var data = raw ? JSON.parse(raw) : [];
-      return Array.isArray(data) ? data.filter(function (q) { return q && q.text; }) : [];
+      var raw = localStorage.getItem(key);
+      var data = raw ? JSON.parse(raw) : fallback;
+      return Array.isArray(data) === Array.isArray(fallback) ? data : fallback;
     } catch (e) {
-      return [];
+      return fallback;
     }
   }
 
-  function save() {
+  function saveJSON(key, value) {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(quotes));
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
     } catch (e) {
-      $('backup-status').textContent = 'Could not save to this browser’s storage — copy a backup so nothing is lost.';
+      return false;
     }
   }
 
-  function uid() {
-    return 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  function uid(prefix) {
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
   function fmtDate(iso) {
@@ -332,12 +421,225 @@
     }
   }
 
+  /* ---- Password hashing ----
+     SHA-256 via Web Crypto where available; a simple fallback hash otherwise.
+     Either way this deters casual snooping on a shared device — it is not
+     bank-grade security, and the README says so. */
+  function fallbackHash(str) {
+    var h1 = 5381, h2 = 52711, i;
+    for (i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      h1 = (h1 * 33 ^ c) >>> 0;
+      h2 = (h2 * 31 + c) >>> 0;
+    }
+    return 'fb-' + h1.toString(16) + h2.toString(16);
+  }
+
+  function hashPassword(salt, password) {
+    var input = salt + ':' + password;
+    if (window.crypto && crypto.subtle && crypto.subtle.digest) {
+      var bytes = new TextEncoder().encode(input);
+      return crypto.subtle.digest('SHA-256', bytes).then(function (buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+          return ('0' + b.toString(16)).slice(-2);
+        }).join('');
+      }, function () {
+        return fallbackHash(input);
+      });
+    }
+    return Promise.resolve(fallbackHash(input));
+  }
+
+  /* ---- Profiles & session ---- */
+  function saveProfiles() { saveJSON(PROFILES_KEY, profiles); }
+
+  function quotesKey(profileId) { return QUOTES_PREFIX + profileId; }
+
+  function signIn(profile) {
+    current = profile;
+    try { localStorage.setItem(SESSION_KEY, profile.id); } catch (e) {}
+    quotes = loadJSON(quotesKey(profile.id), []).filter(function (q) { return q && q.text; });
+    lastShownId = null;
+    resetForm();
+    $('search').value = '';
+    $('backup-box').value = '';
+    $('backup-status').textContent = '';
+    $('whoami-name').textContent = profile.name;
+    $('login-view').hidden = true;
+    $('app-view').hidden = false;
+    renderList();
+    showRandom();
+  }
+
+  function signOut() {
+    current = null;
+    quotes = [];
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    $('app-view').hidden = true;
+    $('login-view').hidden = false;
+    renderLogin('');
+  }
+
+  function saveQuotes() {
+    if (!current) return;
+    if (!saveJSON(quotesKey(current.id), quotes)) {
+      $('backup-status').textContent = 'Could not save to this browser’s storage — copy a backup so nothing is lost.';
+    }
+  }
+
+  /* One-time migration: quotes saved before profiles existed move into the
+     first profile created, so nobody's collection is lost by the upgrade. */
+  function migrateLegacyInto(profileId) {
+    var legacy = loadJSON(LEGACY_QUOTES_KEY, null);
+    if (!Array.isArray(legacy) || legacy.length === 0) return false;
+    saveJSON(quotesKey(profileId), legacy);
+    try { localStorage.removeItem(LEGACY_QUOTES_KEY); } catch (e) {}
+    return true;
+  }
+
+  /* ---- Login screen ---- */
+  function renderLogin(hint) {
+    $('login-hint').textContent = hint || '';
+    var list = $('profile-list');
+    list.textContent = '';
+    $('profiles-empty').hidden = profiles.length > 0;
+    $('newp').open = profiles.length === 0;
+    $('np-error').textContent = '';
+
+    profiles.forEach(function (p) {
+      var li = document.createElement('li');
+
+      var row = document.createElement('div');
+      row.className = 'profile-row';
+      var name = document.createElement('span');
+      name.className = 'pname';
+      name.textContent = p.name;
+      row.appendChild(name);
+      if (p.hash) {
+        var lock = document.createElement('span');
+        lock.className = 'lock';
+        lock.textContent = 'password';
+        row.appendChild(lock);
+      }
+      var enter = document.createElement('button');
+      enter.type = 'button';
+      enter.className = 'primary';
+      enter.textContent = 'Sign in';
+      row.appendChild(enter);
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'quiet danger';
+      del.textContent = 'Delete';
+      row.appendChild(del);
+      li.appendChild(row);
+
+      var pwRow = document.createElement('form');
+      pwRow.className = 'pw-row';
+      pwRow.hidden = true;
+      var pwInput = document.createElement('input');
+      pwInput.type = 'password';
+      pwInput.autocomplete = 'current-password';
+      pwInput.placeholder = 'Password for ' + p.name;
+      pwInput.setAttribute('aria-label', 'Password for ' + p.name);
+      var pwGo = document.createElement('button');
+      pwGo.type = 'submit';
+      pwGo.className = 'primary';
+      pwGo.textContent = 'Go';
+      var pwErr = document.createElement('p');
+      pwErr.className = 'form-error';
+      pwRow.appendChild(pwInput);
+      pwRow.appendChild(pwGo);
+      li.appendChild(pwRow);
+      li.appendChild(pwErr);
+
+      var pendingAction = 'signin';
+
+      function openPwRow(action, buttonLabel) {
+        pendingAction = action;
+        pwGo.textContent = buttonLabel;
+        pwRow.hidden = false;
+        pwErr.textContent = '';
+        pwInput.value = '';
+        pwInput.focus();
+      }
+
+      function deleteProfile() {
+        if (!confirm('Delete the profile “' + p.name + '” and every quote in it? This can’t be undone.')) return;
+        profiles = profiles.filter(function (x) { return x.id !== p.id; });
+        saveProfiles();
+        try { localStorage.removeItem(quotesKey(p.id)); } catch (e) {}
+        renderLogin('Profile “' + p.name + '” deleted.');
+      }
+
+      enter.addEventListener('click', function () {
+        if (!p.hash) { signIn(p); return; }
+        if (pwRow.hidden || pendingAction !== 'signin') openPwRow('signin', 'Go');
+        else pwInput.focus();
+      });
+
+      del.addEventListener('click', function () {
+        if (!p.hash) { deleteProfile(); return; }
+        openPwRow('delete', 'Confirm delete');
+      });
+
+      pwRow.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hashPassword(p.salt, pwInput.value).then(function (h) {
+          if (h !== p.hash) {
+            pwErr.textContent = 'That’s not it — try again.';
+            pwInput.select();
+            return;
+          }
+          if (pendingAction === 'delete') deleteProfile();
+          else signIn(p);
+        });
+      });
+
+      list.appendChild(li);
+    });
+  }
+
+  $('newp-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('np-name').value.trim();
+    var pass = $('np-pass').value;
+    var pass2 = $('np-pass2').value;
+    var err = $('np-error');
+    err.textContent = '';
+
+    if (!name) { err.textContent = 'Give the profile a name.'; return; }
+    if (profiles.some(function (p) { return p.name.toLowerCase() === name.toLowerCase(); })) {
+      err.textContent = 'There’s already a profile called “' + name + '”.';
+      return;
+    }
+    if (pass !== pass2) { err.textContent = 'The passwords don’t match.'; return; }
+
+    var profile = { id: uid('p'), name: name, salt: '', hash: '', created: new Date().toISOString() };
+    var finish = function () {
+      var isFirst = profiles.length === 0;
+      profiles.push(profile);
+      saveProfiles();
+      if (isFirst) migrateLegacyInto(profile.id);
+      $('newp-form').reset();
+      signIn(profile);
+    };
+
+    if (pass) {
+      profile.salt = uid('s');
+      hashPassword(profile.salt, pass).then(function (h) {
+        profile.hash = h;
+        finish();
+      });
+    } else {
+      finish();
+    }
+  });
+
   /* ---- Random quote ---- */
   function showRandom() {
     var hero = $('hero');
     if (quotes.length === 0) {
       $('hero-text').textContent = 'Nothing here yet.';
-      $('hero-who').innerHTML = '';
       $('hero-who').textContent = 'Add the first quote you can remember below — the rest come back once you start.';
       $('hero-note').hidden = true;
       $('shuffle').hidden = true;
@@ -463,7 +765,7 @@
     if (!confirm('Delete this quote by ' + (q.by || 'Unknown') + '? This can’t be undone.')) return;
     quotes = quotes.filter(function (x) { return x.id !== id; });
     if (editingId === id) resetForm();
-    save();
+    saveQuotes();
     renderList();
     if (lastShownId === id) showRandom();
   }
@@ -480,14 +782,14 @@
       if (q) { q.text = text; q.by = by; q.note = note; }
       var wasShown = lastShownId === editingId;
       resetForm();
-      save();
+      saveQuotes();
       renderList();
       if (wasShown) showRandom();
     } else {
-      quotes.push({ id: uid(), text: text, by: by, note: note, added: new Date().toISOString() });
+      quotes.push({ id: uid('q'), text: text, by: by, note: note, added: new Date().toISOString() });
       var first = quotes.length === 1;
       resetForm();
-      save();
+      saveQuotes();
       renderList();
       if (first) showRandom();
       $('f-hint').textContent = 'Saved.';
@@ -498,6 +800,7 @@
   $('f-cancel').addEventListener('click', resetForm);
   $('shuffle').addEventListener('click', showRandom);
   $('search').addEventListener('input', renderList);
+  $('signout').addEventListener('click', signOut);
 
   /* ---- Backup ---- */
   $('backup-copy').addEventListener('click', function () {
@@ -533,7 +836,7 @@
     incoming.forEach(function (inQ) {
       if (!inQ || typeof inQ.text !== 'string' || !inQ.text.trim()) return;
       var clean = {
-        id: typeof inQ.id === 'string' ? inQ.id : uid(),
+        id: typeof inQ.id === 'string' ? inQ.id : uid('q'),
         text: inQ.text,
         by: typeof inQ.by === 'string' ? inQ.by : '',
         note: typeof inQ.note === 'string' ? inQ.note : '',
@@ -549,15 +852,22 @@
         added++;
       }
     });
-    save();
+    saveQuotes();
     renderList();
     showRandom();
     $('backup-status').textContent = 'Loaded: ' + added + ' new, ' + updated + ' updated. Nothing was deleted.';
   });
 
   /* ---- Boot ---- */
-  renderList();
-  showRandom();
+  var sessionId = null;
+  try { sessionId = localStorage.getItem(SESSION_KEY); } catch (e) {}
+  var remembered = profiles.find(function (p) { return p.id === sessionId; });
+  if (remembered) {
+    signIn(remembered);
+  } else {
+    $('login-view').hidden = false;
+    renderLogin('');
+  }
 })();
 </script>
 </body>
