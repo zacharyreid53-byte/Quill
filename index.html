@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quill</title>
+</head>
+<body>
+<style>
+  :root {
+    --paper: #FDF9F0;
+    --card: #FFFFFF;
+    --ink: #26221C;
+    --ink-soft: #6E675A;
+    --line: #E7DFCE;
+    --accent: #2C55D9;
+    --accent-ink: #FFFFFF;
+    --mark: #E8A93C;
+    --danger: #B4372F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1F1C16;
+      --card: #29251E;
+      --ink: #F1EADB;
+      --ink-soft: #A79D8A;
+      --line: #3B362C;
+      --accent: #8FA9F2;
+      --accent-ink: #141B33;
+      --mark: #D9A741;
+      --danger: #E58077;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1F1C16;
+    --card: #29251E;
+    --ink: #F1EADB;
+    --ink-soft: #A79D8A;
+    --line: #3B362C;
+    --accent: #8FA9F2;
+    --accent-ink: #141B33;
+    --mark: #D9A741;
+    --danger: #E58077;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.25rem;
+  }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .wordmark {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin: 0;
+  }
+  .wordmark .nib { color: var(--mark); }
+  .tagline { color: var(--ink-soft); font-size: 0.9rem; margin: 0.1rem 0 0; }
+  .count {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Random quote hero */
+  .hero {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 2.25rem 2rem 1.75rem;
+    position: relative;
+  }
+  .hero .mark {
+    font-family: Georgia, serif;
+    font-size: 4.5rem;
+    line-height: 1;
+    color: var(--mark);
+    position: absolute;
+    top: 0.75rem;
+    left: 1.1rem;
+    user-select: none;
+  }
+  .hero blockquote {
+    margin: 1.25rem 0 0;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.55rem;
+    line-height: 1.4;
+    text-wrap: balance;
+  }
+  .hero .who {
+    margin: 1rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+  }
+  .hero .who strong { color: var(--ink); font-weight: 600; }
+  .hero .note { margin: 0.35rem 0 0; color: var(--ink-soft); font-size: 0.85rem; font-style: italic; }
+  .hero-actions { margin-top: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
+  .hero.fresh blockquote, .hero.fresh .who, .hero.fresh .note { animation: settle 240ms ease-out; }
+  @keyframes settle {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero.fresh blockquote, .hero.fresh .who, .hero.fresh .note { animation: none; }
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    padding: 0.5rem 1rem;
+  }
+  button.primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  button.quiet {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    padding: 0.25rem 0.4rem;
+    font-size: 0.85rem;
+  }
+  button.quiet.danger { color: var(--danger); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Sections */
+  h2 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin: 0 0 0.75rem;
+  }
+
+  form.add {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  label { font-size: 0.85rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 0.3rem; }
+  input, textarea {
+    font: inherit;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.55rem 0.7rem;
+    width: 100%;
+  }
+  textarea { resize: vertical; min-height: 4.5rem; font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; font-size: 1.05rem; }
+  .form-actions { display: flex; gap: 0.6rem; align-items: center; }
+  .form-hint { font-size: 0.8rem; color: var(--ink-soft); margin: 0; }
+
+  .search { margin-bottom: 1rem; }
+
+  ul.quotes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  ul.quotes li {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1rem 1.1rem;
+  }
+  ul.quotes blockquote {
+    margin: 0;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 1.05rem;
+  }
+  ul.quotes .meta {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  ul.quotes .meta .by { color: var(--ink); font-weight: 600; }
+  ul.quotes .meta .date {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+  }
+  ul.quotes .meta .spacer { flex: 1; }
+  ul.quotes .note { margin: 0.3rem 0 0; font-size: 0.85rem; font-style: italic; color: var(--ink-soft); }
+
+  .empty {
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+    padding: 1.5rem;
+    color: var(--ink-soft);
+    text-align: center;
+    font-size: 0.95rem;
+  }
+
+  details.backup { border-top: 1px solid var(--line); padding-top: 1.25rem; }
+  details.backup summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); }
+  details.backup .inner { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+  details.backup textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.75rem; min-height: 6rem; }
+  .backup-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin: 0; min-height: 1.3em; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      <p class="tagline">The funny things they said.</p>
+    </div>
+    <span class="count" id="count"></span>
+  </header>
+
+  <section class="hero" id="hero" aria-live="polite">
+    <span class="mark" aria-hidden="true">&ldquo;</span>
+    <blockquote id="hero-text"></blockquote>
+    <p class="who" id="hero-who"></p>
+    <p class="note" id="hero-note" hidden></p>
+    <div class="hero-actions">
+      <button class="primary" id="shuffle" type="button">Another one</button>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="form-title">Add a quote</h2>
+    <form class="add" id="add-form">
+      <label>The quote
+        <textarea id="f-text" required placeholder="Write it the way they said it&hellip;"></textarea>
+      </label>
+      <label>Who said it
+        <input id="f-by" required placeholder="Uncle Ray, Mom, Dave from next door&hellip;">
+      </label>
+      <label>Context <span style="text-transform:none; letter-spacing:0;">(optional)</span>
+        <input id="f-note" placeholder="Thanksgiving 2019, after the turkey incident">
+      </label>
+      <div class="form-actions">
+        <button class="primary" type="submit" id="f-submit">Save quote</button>
+        <button type="button" id="f-cancel" hidden>Cancel</button>
+        <p class="form-hint" id="f-hint"></p>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>The collection</h2>
+    <div class="search">
+      <input id="search" type="search" placeholder="Search quotes or people&hellip;" aria-label="Search quotes">
+    </div>
+    <ul class="quotes" id="list"></ul>
+    <div class="empty" id="empty" hidden></div>
+  </section>
+
+  <details class="backup">
+    <summary>Backup &amp; restore</summary>
+    <div class="inner">
+      <p class="form-hint">Your quotes live in this browser. Copy a backup now and then, and paste it here on another device to bring them over.</p>
+      <textarea id="backup-box" aria-label="Backup data" placeholder='Paste a backup here, then press "Load from backup"'></textarea>
+      <div class="backup-actions">
+        <button type="button" id="backup-copy">Copy backup</button>
+        <button type="button" id="backup-load">Load from backup</button>
+      </div>
+      <p class="status" id="backup-status"></p>
+    </div>
+  </details>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORE_KEY = 'quill.quotes.v1';
+  var quotes = load();
+  var lastShownId = null;
+  var editingId = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      var data = raw ? JSON.parse(raw) : [];
+      return Array.isArray(data) ? data.filter(function (q) { return q && q.text; }) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(quotes));
+    } catch (e) {
+      $('backup-status').textContent = 'Could not save to this browser’s storage — copy a backup so nothing is lost.';
+    }
+  }
+
+  function uid() {
+    return 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function fmtDate(iso) {
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /* ---- Random quote ---- */
+  function showRandom() {
+    var hero = $('hero');
+    if (quotes.length === 0) {
+      $('hero-text').textContent = 'Nothing here yet.';
+      $('hero-who').innerHTML = '';
+      $('hero-who').textContent = 'Add the first quote you can remember below — the rest come back once you start.';
+      $('hero-note').hidden = true;
+      $('shuffle').hidden = true;
+      return;
+    }
+    $('shuffle').hidden = false;
+    var pool = quotes.length > 1
+      ? quotes.filter(function (q) { return q.id !== lastShownId; })
+      : quotes;
+    var q = pool[Math.floor(Math.random() * pool.length)];
+    lastShownId = q.id;
+
+    $('hero-text').textContent = '“' + q.text + '”';
+    var who = $('hero-who');
+    who.textContent = '';
+    who.appendChild(document.createTextNode('— '));
+    var strong = document.createElement('strong');
+    strong.textContent = q.by || 'Unknown';
+    who.appendChild(strong);
+    var note = $('hero-note');
+    note.textContent = q.note || '';
+    note.hidden = !q.note;
+
+    hero.classList.remove('fresh');
+    void hero.offsetWidth; /* restart the entry animation */
+    hero.classList.add('fresh');
+  }
+
+  /* ---- List ---- */
+  function renderList() {
+    var query = $('search').value.trim().toLowerCase();
+    var list = $('list');
+    var empty = $('empty');
+    list.textContent = '';
+
+    var shown = quotes.filter(function (q) {
+      if (!query) return true;
+      return (q.text + ' ' + (q.by || '') + ' ' + (q.note || '')).toLowerCase().indexOf(query) !== -1;
+    });
+    shown.sort(function (a, b) { return (b.added || '').localeCompare(a.added || ''); });
+
+    empty.hidden = shown.length > 0;
+    if (shown.length === 0) {
+      empty.textContent = quotes.length === 0
+        ? 'No quotes yet. The best ones are the throwaway lines — write them down before they fade.'
+        : 'Nothing matches “' + $('search').value.trim() + '”.';
+    }
+
+    shown.forEach(function (q) {
+      var li = document.createElement('li');
+
+      var bq = document.createElement('blockquote');
+      bq.textContent = '“' + q.text + '”';
+      li.appendChild(bq);
+
+      if (q.note) {
+        var note = document.createElement('p');
+        note.className = 'note';
+        note.textContent = q.note;
+        li.appendChild(note);
+      }
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+      var by = document.createElement('span');
+      by.className = 'by';
+      by.textContent = q.by || 'Unknown';
+      var date = document.createElement('span');
+      date.className = 'date';
+      date.textContent = q.added ? fmtDate(q.added) : '';
+      var spacer = document.createElement('span');
+      spacer.className = 'spacer';
+      var edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'quiet';
+      edit.textContent = 'Edit';
+      edit.addEventListener('click', function () { startEdit(q.id); });
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'quiet danger';
+      del.textContent = 'Delete';
+      del.addEventListener('click', function () { removeQuote(q.id); });
+
+      meta.appendChild(by);
+      meta.appendChild(date);
+      meta.appendChild(spacer);
+      meta.appendChild(edit);
+      meta.appendChild(del);
+      li.appendChild(meta);
+      list.appendChild(li);
+    });
+
+    $('count').textContent = quotes.length === 1 ? '1 quote' : quotes.length + ' quotes';
+  }
+
+  /* ---- Add / edit ---- */
+  function resetForm() {
+    editingId = null;
+    $('add-form').reset();
+    $('form-title').textContent = 'Add a quote';
+    $('f-submit').textContent = 'Save quote';
+    $('f-cancel').hidden = true;
+    $('f-hint').textContent = '';
+  }
+
+  function startEdit(id) {
+    var q = quotes.find(function (x) { return x.id === id; });
+    if (!q) return;
+    editingId = id;
+    $('f-text').value = q.text;
+    $('f-by').value = q.by || '';
+    $('f-note').value = q.note || '';
+    $('form-title').textContent = 'Edit quote';
+    $('f-submit').textContent = 'Save changes';
+    $('f-cancel').hidden = false;
+    $('add-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('f-text').focus();
+  }
+
+  function removeQuote(id) {
+    var q = quotes.find(function (x) { return x.id === id; });
+    if (!q) return;
+    if (!confirm('Delete this quote by ' + (q.by || 'Unknown') + '? This can’t be undone.')) return;
+    quotes = quotes.filter(function (x) { return x.id !== id; });
+    if (editingId === id) resetForm();
+    save();
+    renderList();
+    if (lastShownId === id) showRandom();
+  }
+
+  $('add-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = $('f-text').value.trim();
+    var by = $('f-by').value.trim();
+    var note = $('f-note').value.trim();
+    if (!text || !by) return;
+
+    if (editingId) {
+      var q = quotes.find(function (x) { return x.id === editingId; });
+      if (q) { q.text = text; q.by = by; q.note = note; }
+      var wasShown = lastShownId === editingId;
+      resetForm();
+      save();
+      renderList();
+      if (wasShown) showRandom();
+    } else {
+      quotes.push({ id: uid(), text: text, by: by, note: note, added: new Date().toISOString() });
+      var first = quotes.length === 1;
+      resetForm();
+      save();
+      renderList();
+      if (first) showRandom();
+      $('f-hint').textContent = 'Saved.';
+      setTimeout(function () { if (!editingId) $('f-hint').textContent = ''; }, 2000);
+    }
+  });
+
+  $('f-cancel').addEventListener('click', resetForm);
+  $('shuffle').addEventListener('click', showRandom);
+  $('search').addEventListener('input', renderList);
+
+  /* ---- Backup ---- */
+  $('backup-copy').addEventListener('click', function () {
+    var payload = JSON.stringify(quotes, null, 2);
+    $('backup-box').value = payload;
+    var done = function () { $('backup-status').textContent = 'Backup copied — paste it somewhere safe (a note, an email to yourself).'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(payload).then(done, function () {
+        $('backup-box').select();
+        $('backup-status').textContent = 'Backup is in the box above — copy it with Ctrl/Cmd+C.';
+      });
+    } else {
+      $('backup-box').select();
+      $('backup-status').textContent = 'Backup is in the box above — copy it with Ctrl/Cmd+C.';
+    }
+  });
+
+  $('backup-load').addEventListener('click', function () {
+    var raw = $('backup-box').value.trim();
+    if (!raw) { $('backup-status').textContent = 'Paste a backup into the box first.'; return; }
+    var incoming;
+    try {
+      incoming = JSON.parse(raw);
+    } catch (e) {
+      $('backup-status').textContent = 'That doesn’t look like a Quill backup — paste the whole thing, starting with [.';
+      return;
+    }
+    if (!Array.isArray(incoming)) {
+      $('backup-status').textContent = 'That doesn’t look like a Quill backup — paste the whole thing, starting with [.';
+      return;
+    }
+    var added = 0, updated = 0;
+    incoming.forEach(function (inQ) {
+      if (!inQ || typeof inQ.text !== 'string' || !inQ.text.trim()) return;
+      var clean = {
+        id: typeof inQ.id === 'string' ? inQ.id : uid(),
+        text: inQ.text,
+        by: typeof inQ.by === 'string' ? inQ.by : '',
+        note: typeof inQ.note === 'string' ? inQ.note : '',
+        added: typeof inQ.added === 'string' ? inQ.added : new Date().toISOString()
+      };
+      var existing = quotes.find(function (x) { return x.id === clean.id; });
+      if (existing) {
+        existing.text = clean.text; existing.by = clean.by;
+        existing.note = clean.note; existing.added = clean.added;
+        updated++;
+      } else {
+        quotes.push(clean);
+        added++;
+      }
+    });
+    save();
+    renderList();
+    showRandom();
+    $('backup-status').textContent = 'Loaded: ' + added + ' new, ' + updated + ' updated. Nothing was deleted.';
+  });
+
+  /* ---- Boot ---- */
+  renderList();
+  showRandom();
+})();
+</script>
+</body>
+</html>
