@@ -117,7 +117,7 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Random quote hero */
+  /* Boot / connecting screen card */
   .hero {
     background: var(--card);
     border: 1px solid var(--line);
@@ -135,29 +135,7 @@
     left: 1.1rem;
     user-select: none;
   }
-  .hero blockquote {
-    margin: 1.25rem 0 0;
-    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-    font-size: 1.55rem;
-    line-height: 1.4;
-    text-wrap: balance;
-  }
-  .hero .who {
-    margin: 1rem 0 0;
-    color: var(--ink-soft);
-    font-size: 0.95rem;
-  }
-  .hero .who strong { color: var(--ink); font-weight: 600; }
-  .hero .note { margin: 0.35rem 0 0; color: var(--ink-soft); font-size: 0.85rem; font-style: italic; }
   .hero-actions { margin-top: 1.5rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-  .hero.fresh blockquote, .hero.fresh .who, .hero.fresh .note { animation: settle 240ms ease-out; }
-  @keyframes settle {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: none; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .hero.fresh blockquote, .hero.fresh .who, .hero.fresh .note { animation: none; }
-  }
   .login-intro {
     font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     font-size: 1.3rem;
@@ -415,17 +393,6 @@
     </div>
   </header>
 
-  <section class="hero" id="hero" aria-live="polite">
-    <span class="mark" aria-hidden="true">&ldquo;</span>
-    <blockquote id="hero-text"></blockquote>
-    <p class="who" id="hero-who"></p>
-    <p class="note" id="hero-note" hidden></p>
-    <div class="hero-actions">
-      <button class="primary" id="shuffle" type="button">Another one</button>
-      <button id="hero-fav" type="button" hidden>&#9734; Favorite</button>
-    </div>
-  </section>
-
   <section>
     <button class="primary" type="button" id="add-quote-toggle">+ Add a quote</button>
     <div id="add-section" hidden>
@@ -510,7 +477,6 @@
   let family = [];        /* other users: {uid, name} */
   let quotes = [];        /* my quotes, live from Firestore */
   let unsubscribe = null; /* Firestore listener */
-  let lastShownId = null;
   let editingId = null;
   let openId = null;
   let favOnly = false;
@@ -591,13 +557,10 @@
       quotes = Object.keys(val).map((id) => ({ id, ...val[id] }))
         .filter((q) => q && typeof q.text === 'string' && q.text);
       renderList();
-      if (!lastShownId || !quotes.some((q) => q.id === lastShownId)) showRandom();
-      else updateHeroFav();
     }, (err) => {
       $('backup-status').textContent = 'Lost the connection to your collection (' + (err.message || 'unknown') + ') — reload the page.';
     });
 
-    lastShownId = null;
     openId = null;
     favOnly = false;
     $('fav-filter').setAttribute('aria-pressed', 'false');
@@ -759,49 +722,6 @@
     } catch (e) {
       $('backup-status').textContent = 'Couldn’t update the favorite — check your connection.';
     }
-  }
-
-  function updateHeroFav() {
-    const btn = $('hero-fav');
-    const q = quotes.find((x) => x.id === lastShownId);
-    if (!q) { btn.hidden = true; return; }
-    btn.hidden = false;
-    btn.innerHTML = q.fav ? '&#9733; Favorited' : '&#9734; Favorite';
-    btn.classList.toggle('star', !!q.fav);
-  }
-
-  /* ---- Random quote ---- */
-  function showRandom() {
-    const hero = $('hero');
-    if (quotes.length === 0) {
-      $('hero-text').textContent = 'Nothing here yet.';
-      $('hero-who').textContent = 'Add the first quote you can remember below — the rest come back once you start.';
-      $('hero-note').hidden = true;
-      $('shuffle').hidden = true;
-      $('hero-fav').hidden = true;
-      lastShownId = null;
-      return;
-    }
-    $('shuffle').hidden = false;
-    const pool = quotes.length > 1 ? quotes.filter((q) => q.id !== lastShownId) : quotes;
-    const q = pool[Math.floor(Math.random() * pool.length)];
-    lastShownId = q.id;
-
-    $('hero-text').textContent = '“' + q.text + '”';
-    const who = $('hero-who');
-    who.textContent = '';
-    who.appendChild(document.createTextNode('— '));
-    const strong = document.createElement('strong');
-    strong.textContent = q.by || 'Unknown';
-    who.appendChild(strong);
-    const note = $('hero-note');
-    note.textContent = q.note || '';
-    note.hidden = !q.note;
-    updateHeroFav();
-
-    hero.classList.remove('fresh');
-    void hero.offsetWidth; /* restart the entry animation */
-    hero.classList.add('fresh');
   }
 
   /* ---- Sharing ---- */
@@ -1000,10 +920,6 @@
     renderList();
   });
 
-  $('hero-fav').addEventListener('click', () => {
-    if (lastShownId) toggleFav(lastShownId);
-  });
-
   /* ---- Add / edit / delete ---- */
   const NOTE_PLACEHOLDER = 'Thanksgiving 2019, after the turkey incident';
 
@@ -1082,7 +998,6 @@
 
   $('add-quote-toggle').addEventListener('click', openAddSection);
   $('f-cancel').addEventListener('click', () => { resetForm(); closeAddSection(); });
-  $('shuffle').addEventListener('click', showRandom);
   $('search').addEventListener('input', renderList);
 
   /* ---- Bulk copy / paste ---- */
