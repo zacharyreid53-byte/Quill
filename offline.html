@@ -63,11 +63,12 @@
   .wrap[hidden] { display: none; }
 
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
-  .logo-row { display: flex; align-items: center; gap: 0.5rem; }
+  .logo-row { display: flex; align-items: flex-end; gap: 0.1rem; }
   .feather {
     width: 1.7rem;
     height: 1.7rem;
     flex-shrink: 0;
+    margin-bottom: -0.05rem;
     fill: none;
     stroke: var(--ink);
     stroke-width: 1.6;
@@ -83,7 +84,6 @@
     letter-spacing: 0.01em;
     margin: 0;
   }
-  .wordmark .nib { color: var(--mark); }
   .tagline { color: var(--ink-soft); font-size: 0.9rem; margin: 0.1rem 0 0; }
   .whoami {
     text-align: right;
@@ -324,13 +324,13 @@
   <header>
     <div>
       <div class="logo-row">
+        <h1 class="wordmark">Quill</h1>
         <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
           <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
           <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
           <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
           <circle class="nib-dot" cx="3" cy="30" r="1.6" />
         </svg>
-        <h1 class="wordmark">Quill<span class="nib">.</span></h1>
       </div>
       <p class="tagline">The funny things they said.</p>
     </div>
@@ -375,13 +375,13 @@
   <header>
     <div>
       <div class="logo-row">
+        <h1 class="wordmark">Quill</h1>
         <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
           <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
           <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
           <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
           <circle class="nib-dot" cx="3" cy="30" r="1.6" />
         </svg>
-        <h1 class="wordmark">Quill<span class="nib">.</span></h1>
       </div>
       <p class="tagline">The funny things they said.</p>
     </div>
