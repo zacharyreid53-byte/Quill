@@ -6,20 +6,12 @@
 <title>Quill</title>
 <script>
   /* ============================================================
-     Your Firebase web app config goes here.
-     Firebase console → Project settings (gear icon) → Your apps
-     → Web app → "SDK setup and configuration" → Config.
-     These values are safe to keep in the page — access is
-     controlled by your database security rules, not by hiding
-     the config.
+     Your npoint.io bin URL goes here — the JSON store all of
+     Quill's data (profiles and everyone's quotes) lives in.
+     Create one free at https://www.npoint.io, then paste its
+     "https://api.npoint.io/..." URL below.
      ============================================================ */
-  window.QUILL_FIREBASE_CONFIG = {
-    apiKey: "AIzaSyDYNx6R9KEor2eMHBT0k-CqNveV1jGcwZ8",
-    authDomain: "quill-230f3.firebaseapp.com",
-    databaseURL: "https://quill-230f3-default-rtdb.firebaseio.com",
-    projectId: "quill-230f3",
-    appId: "1:711102883084:web:dc094ec9f8575f874e5529"
-  };
+  window.QUILL_NPOINT_URL = "https://api.npoint.io/e5258db16c03de38541e";
 </script>
 </head>
 <body>
@@ -104,6 +96,12 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
+  .sync {
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    min-height: 1.1em;
+  }
+  .sync.err { color: var(--danger); }
 
   /* Random quote hero */
   .hero {
@@ -297,18 +295,31 @@
     font-size: 0.95rem;
   }
 
-  .auth-columns { display: flex; flex-direction: column; gap: 2.25rem; }
+  ul.profiles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  ul.profiles li {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .profile-row { display: flex; align-items: center; gap: 0.75rem; }
+  .profile-row .pname { font-weight: 600; font-size: 1.05rem; flex: 1; }
+  .profile-row .lock { color: var(--ink-soft); font-size: 0.8rem; }
+  .pw-row { display: flex; gap: 0.6rem; align-items: center; }
+  .pw-row input { flex: 1; }
 
-  details.backup { border-top: 1px solid var(--line); padding-top: 1.25rem; }
+  details.backup, details.newp { border-top: 1px solid var(--line); padding-top: 1.25rem; }
   details summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); }
   details .inner { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
   details.backup textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.75rem; min-height: 6rem; }
   .backup-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
   .status { font-size: 0.85rem; color: var(--ink-soft); margin: 0; min-height: 1.3em; }
-  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85em; }
 </style>
 
-<!-- ============ Loading ============ -->
+<!-- ============ Boot / connection screen ============ -->
 <div class="wrap" id="boot-view">
   <header>
     <div>
@@ -318,7 +329,10 @@
   </header>
   <section class="hero">
     <span class="mark" aria-hidden="true">&ldquo;</span>
-    <p class="login-intro" id="boot-message">Connecting&hellip;</p>
+    <p class="login-intro" id="boot-message">Connecting to your quotes&hellip;</p>
+    <div class="hero-actions" id="boot-actions" hidden>
+      <button class="primary" type="button" id="boot-retry">Try again</button>
+    </div>
   </section>
 </div>
 
@@ -333,47 +347,36 @@
 
   <section class="hero">
     <span class="mark" aria-hidden="true">&ldquo;</span>
-    <p class="login-intro">Sign in, and your quotes follow you to any device.</p>
+    <p class="login-intro">Who&rsquo;s this?</p>
     <p class="form-hint" id="login-hint" style="margin-top:0.75rem;"></p>
   </section>
 
-  <div class="auth-columns">
-    <section>
-      <h2>Sign in</h2>
-      <form class="panel" id="signin-form">
-        <label>Email
-          <input id="si-email" type="email" required autocomplete="email" placeholder="you@example.com">
-        </label>
-        <label>Password
-          <input id="si-pass" type="password" required autocomplete="current-password">
-        </label>
-        <div class="form-actions">
-          <button class="primary" type="submit" id="si-submit">Sign in</button>
-          <button class="quiet" type="button" id="si-forgot">Forgot password?</button>
-        </div>
-        <p class="form-error" id="si-error"></p>
-      </form>
-    </section>
+  <section>
+    <h2>Profiles</h2>
+    <ul class="profiles" id="profile-list"></ul>
+    <div class="empty" id="profiles-empty" hidden>No profiles yet — make yours below.</div>
+  </section>
 
-    <section>
-      <h2>New here? Create an account</h2>
-      <form class="panel" id="signup-form">
-        <label>Your name <span style="text-transform:none;">(how you'll appear to family when sharing)</span>
-          <input id="su-name" required maxlength="40" placeholder="Zach">
+  <details class="newp" id="newp" open>
+    <summary>New profile</summary>
+    <div class="inner">
+      <form class="panel" id="newp-form">
+        <label>Your name
+          <input id="np-name" required maxlength="40" placeholder="Zach">
         </label>
-        <label>Email
-          <input id="su-email" type="email" required autocomplete="email" placeholder="you@example.com">
+        <label>Password <span style="text-transform:none;">(optional — keeps others out of your collection; there's no recovery if you forget it)</span>
+          <input id="np-pass" type="password" autocomplete="new-password" placeholder="Leave blank for no password">
         </label>
-        <label>Password <span style="text-transform:none;">(at least 6 characters)</span>
-          <input id="su-pass" type="password" required minlength="6" autocomplete="new-password">
+        <label>Repeat password
+          <input id="np-pass2" type="password" autocomplete="new-password" placeholder="Only if you set one">
         </label>
         <div class="form-actions">
-          <button class="primary" type="submit" id="su-submit">Create account</button>
+          <button class="primary" type="submit" id="np-submit">Create profile</button>
+          <p class="form-error" id="np-error"></p>
         </div>
-        <p class="form-error" id="su-error"></p>
       </form>
-    </section>
-  </div>
+    </div>
+  </details>
 </div>
 
 <!-- ============ App page (#/app) ============ -->
@@ -387,6 +390,7 @@
       <span class="name" id="whoami-name"></span>
       <span class="count" id="count"></span>
       <button class="quiet" id="signout" type="button">Sign out</button>
+      <p class="sync" id="sync-status" aria-live="polite"></p>
     </div>
   </header>
 
@@ -432,14 +436,14 @@
   </section>
 
   <details class="backup">
-    <summary>Backup &amp; import</summary>
+    <summary>Bulk import &amp; export</summary>
     <div class="inner">
-      <p class="form-hint">Everything saves to your account automatically and follows you to any device — no backups needed. This box is for getting quotes in and out in bulk: copy your collection as text, or paste quotes to add them.</p>
+      <p class="form-hint">Everything here saves straight to your npoint store and follows you to any device — this box is just for moving quotes in and out in bulk.</p>
       <div id="local-import" hidden>
         <p class="form-hint" id="local-import-label"></p>
         <div class="backup-actions" id="local-import-buttons"></div>
       </div>
-      <textarea id="backup-box" aria-label="Backup data" placeholder='Paste quotes here, then press "Add these quotes"'></textarea>
+      <textarea id="backup-box" aria-label="Quote data" placeholder='Paste quotes here, then press "Add these quotes"'></textarea>
       <div class="backup-actions">
         <button type="button" id="backup-copy">Copy my collection</button>
         <button type="button" id="backup-load">Add these quotes</button>
@@ -449,186 +453,26 @@
   </details>
 </div>
 
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
-  import {
-    getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
-    signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail
-  } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
-  import {
-    getDatabase, ref, push, set, update, remove, onValue, get
-  } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js';
+<script>
+(function () {
+  'use strict';
 
-  const $ = (id) => document.getElementById(id);
-  const config = window.QUILL_FIREBASE_CONFIG;
+  var NPOINT_URL = window.QUILL_NPOINT_URL;
+  var SESSION_KEY = 'quill.npoint.session.v1';
 
-  /* ---- Config check ---- */
-  if (!config || !config.apiKey || config.apiKey.indexOf('PASTE_') === 0) {
-    $('boot-message').textContent = 'Quill isn’t connected to Firebase yet — open index.html and fill in QUILL_FIREBASE_CONFIG near the top with your project’s web config.';
-    throw new Error('Firebase config missing');
-  }
+  var remote = { profiles: [], quotes: {} };
+  var current = null;
+  var quotes = [];
+  var lastShownId = null;
+  var editingId = null;
+  var openId = null;
+  var favOnly = false;
+  var pollTimer = null;
 
-  const app = initializeApp(config);
-  const auth = getAuth(app);
-  const db = getDatabase(app);
+  var $ = function (id) { return document.getElementById(id); };
 
-  let me = null;          /* {uid, name} */
-  let family = [];        /* other users: {uid, name} */
-  let quotes = [];        /* my quotes, live from Firestore */
-  let unsubscribe = null; /* Firestore listener */
-  let lastShownId = null;
-  let editingId = null;
-  let openId = null;
-  let favOnly = false;
-  let authReady = false;
-
-  /* ---- Routing: sign-in and app are separate pages ---- */
-  function showPage(name) {
-    $('boot-view').hidden = name !== 'boot';
-    $('login-view').hidden = name !== 'login';
-    $('app-view').hidden = name !== 'app';
-  }
-
-  function route() {
-    if (!authReady) { showPage('boot'); return; }
-    if (location.hash === '#/app') {
-      if (me) showPage('app');
-      else location.replace('#/login');
-    } else {
-      if (location.hash !== '#/login') {
-        try { history.replaceState(null, '', '#/login'); } catch (e) { location.hash = '#/login'; }
-      }
-      showPage('login');
-    }
-  }
-  window.addEventListener('hashchange', route);
-
-  function friendlyAuthError(err) {
-    const code = err && err.code || '';
-    if (code.includes('email-already-in-use')) return 'There’s already an account with that email — sign in on the left instead.';
-    if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return 'Email or password isn’t right.';
-    if (code.includes('weak-password')) return 'Password needs at least 6 characters.';
-    if (code.includes('invalid-email')) return 'That email doesn’t look right.';
-    if (code.includes('too-many-requests')) return 'Too many tries — wait a minute and try again.';
-    if (code.includes('network-request-failed')) return 'Can’t reach the server — check your connection.';
-    return 'Something went wrong (' + (code || 'unknown') + '). Try again.';
-  }
-
-  /* ---- Auth state drives everything ---- */
-  onAuthStateChanged(auth, async (user) => {
-    authReady = true;
-    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
-
-    if (!user) {
-      me = null;
-      quotes = [];
-      family = [];
-      route();
-      return;
-    }
-
-    me = { uid: user.uid, name: user.displayName || (user.email || '').split('@')[0] };
-    $('whoami-name').textContent = me.name;
-
-    /* Keep the family directory entry fresh so others can share with us. */
-    try {
-      await set(ref(db, 'directory/' + me.uid), { name: me.name });
-    } catch (e) { /* directory write is best-effort */ }
-
-    loadFamily();
-    checkLocalImport();
-
-    unsubscribe = onValue(ref(db, 'users/' + me.uid + '/quotes'), (snap) => {
-      const val = snap.val() || {};
-      quotes = Object.keys(val).map((id) => ({ id, ...val[id] }))
-        .filter((q) => q && typeof q.text === 'string' && q.text);
-      renderList();
-      if (!lastShownId || !quotes.some((q) => q.id === lastShownId)) showRandom();
-      else updateHeroFav();
-    }, (err) => {
-      $('backup-status').textContent = 'Lost the connection to your collection (' + (err.message || 'unknown') + ') — reload the page.';
-    });
-
-    lastShownId = null;
-    openId = null;
-    favOnly = false;
-    $('fav-filter').setAttribute('aria-pressed', 'false');
-    resetForm();
-    $('search').value = '';
-    $('backup-box').value = '';
-    $('backup-status').textContent = '';
-
-    if (location.hash === '#/app') { showPage('app'); } else { location.hash = '#/app'; route(); }
-  });
-
-  async function loadFamily() {
-    try {
-      const snap = await get(ref(db, 'directory'));
-      const val = snap.val() || {};
-      family = Object.keys(val)
-        .map((uid) => ({ uid, name: (val[uid] || {}).name || 'Someone' }))
-        .filter((u) => u.uid !== me.uid);
-    } catch (e) {
-      family = [];
-    }
-  }
-
-  /* ---- Sign in / sign up / sign out ---- */
-  $('signin-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    $('si-error').textContent = '';
-    $('si-submit').disabled = true;
-    try {
-      await signInWithEmailAndPassword(auth, $('si-email').value.trim(), $('si-pass').value);
-      $('signin-form').reset();
-    } catch (err) {
-      $('si-error').textContent = friendlyAuthError(err);
-    } finally {
-      $('si-submit').disabled = false;
-    }
-  });
-
-  $('si-forgot').addEventListener('click', async () => {
-    const email = $('si-email').value.trim();
-    if (!email) { $('si-error').textContent = 'Type your email above first, then press “Forgot password?”.'; return; }
-    try {
-      await sendPasswordResetEmail(auth, email);
-      $('si-error').textContent = '';
-      $('login-hint').textContent = 'Password reset email sent to ' + email + ' — check your inbox.';
-    } catch (err) {
-      $('si-error').textContent = friendlyAuthError(err);
-    }
-  });
-
-  $('signup-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    $('su-error').textContent = '';
-    const name = $('su-name').value.trim();
-    if (!name) { $('su-error').textContent = 'Tell us your name — it’s how family sees you when sharing.'; return; }
-    $('su-submit').disabled = true;
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, $('su-email').value.trim(), $('su-pass').value);
-      await updateProfile(cred.user, { displayName: name });
-      await set(ref(db, 'directory/' + cred.user.uid), { name });
-      me = { uid: cred.user.uid, name };
-      $('whoami-name').textContent = name;
-      $('signup-form').reset();
-    } catch (err) {
-      $('su-error').textContent = friendlyAuthError(err);
-    } finally {
-      $('su-submit').disabled = false;
-    }
-  });
-
-  $('signout').addEventListener('click', () => { signOut(auth); });
-
-  /* ---- Quote CRUD ---- */
-  function quoteData(text, by, note) {
-    return { text, by, note, added: new Date().toISOString(), fav: false, sharedBy: '' };
-  }
-
-  async function addQuote(data) {
-    return push(ref(db, 'users/' + me.uid + '/quotes'), data);
+  function uid(prefix) {
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
   function fmtDate(iso) {
@@ -637,7 +481,7 @@
     } catch (e) { return ''; }
   }
 
-  function copyToClipboard(text, onCopied, onManual) {
+  function copyText(text, onCopied, onManual) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(onCopied, onManual);
     } else {
@@ -645,20 +489,332 @@
     }
   }
 
-  /* ---- Favorites ---- */
-  async function toggleFav(id) {
-    const q = quotes.find((x) => x.id === id);
-    if (!q) return;
-    try {
-      await update(ref(db, 'users/' + me.uid + '/quotes/' + id), { fav: !q.fav });
-    } catch (e) {
-      $('backup-status').textContent = 'Couldn’t update the favorite — check your connection.';
+  function normalize(data) {
+    var out = { profiles: [], quotes: {} };
+    if (data && Array.isArray(data.profiles)) {
+      out.profiles = data.profiles.filter(function (p) { return p && typeof p.id === 'string' && typeof p.name === 'string'; });
     }
+    if (data && data.quotes && typeof data.quotes === 'object' && !Array.isArray(data.quotes)) {
+      Object.keys(data.quotes).forEach(function (pid) {
+        var list = data.quotes[pid];
+        out.quotes[pid] = Array.isArray(list) ? list.filter(function (q) { return q && typeof q.text === 'string' && q.text; }) : [];
+      });
+    }
+    out.profiles.forEach(function (p) { if (!Array.isArray(out.quotes[p.id])) out.quotes[p.id] = []; });
+    return out;
+  }
+
+  /* ---- Password hashing ----
+     SHA-256 via Web Crypto where available; a simple fallback hash otherwise.
+     Enough to stop someone else from opening your collection by accident —
+     not bank-grade security, and there's no password recovery. */
+  function fallbackHash(str) {
+    var h1 = 5381, h2 = 52711, i;
+    for (i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      h1 = (h1 * 33 ^ c) >>> 0;
+      h2 = (h2 * 31 + c) >>> 0;
+    }
+    return 'fb-' + h1.toString(16) + h2.toString(16);
+  }
+
+  function hashPassword(salt, password) {
+    var input = salt + ':' + password;
+    if (window.crypto && crypto.subtle && crypto.subtle.digest) {
+      var bytes = new TextEncoder().encode(input);
+      return crypto.subtle.digest('SHA-256', bytes).then(function (buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+          return ('0' + b.toString(16)).slice(-2);
+        }).join('');
+      }, function () { return fallbackHash(input); });
+    }
+    return Promise.resolve(fallbackHash(input));
+  }
+
+  /* ---- npoint sync ----
+     Every change re-fetches the bin, applies the change to the fresh copy,
+     then POSTs the whole thing back. That keeps a change made seconds ago
+     on someone else's phone from being clobbered by a stale local copy. */
+  function fetchBin() {
+    return fetch(NPOINT_URL, { cache: 'no-store', headers: { Accept: 'application/json' } })
+      .then(function (res) {
+        if (!res.ok) throw new Error('Could not reach your npoint store (HTTP ' + res.status + ').');
+        return res.json().catch(function () {
+          throw new Error('The store didn’t return valid JSON — check the bin URL.');
+        });
+      })
+      .then(normalize);
+  }
+
+  function withRemote(mutator) {
+    return fetchBin().then(function (data) {
+      var signal = mutator(data) || {};
+      if (signal.abort) return { ok: false, aborted: true, message: signal.abort };
+      return fetch(NPOINT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).then(function (res2) {
+        if (!res2.ok) {
+          return res2.text().catch(function () { return ''; }).then(function (text) {
+            throw new Error('Could not save (HTTP ' + res2.status + ')' + (text ? ': ' + text.slice(0, 200) : '') + '.');
+          });
+        }
+        remote = data;
+        return { ok: true, result: signal.result };
+      });
+    }).catch(function (err) {
+      return { ok: false, message: (err && err.message) || 'Network error — check your connection.' };
+    });
+  }
+
+  function setSync(msg, isErr) {
+    var el = $('sync-status');
+    el.textContent = msg || '';
+    el.classList.toggle('err', !!isErr);
+  }
+
+  /* ---- Routing ---- */
+  function showPage(name) {
+    $('boot-view').hidden = name !== 'boot';
+    $('login-view').hidden = name !== 'login';
+    $('app-view').hidden = name !== 'app';
+  }
+
+  function route() {
+    if (location.hash === '#/app') {
+      if (current) showPage('app');
+      else location.replace('#/login');
+    } else {
+      if (location.hash !== '#/login') {
+        try { history.replaceState(null, '', '#/login'); } catch (e) { location.hash = '#/login'; }
+      }
+      showPage('login');
+      renderLogin('');
+    }
+  }
+  window.addEventListener('hashchange', route);
+
+  /* ---- Polling: catch quotes shared from elsewhere while signed in ---- */
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(function () {
+      fetchBin().then(function (data) {
+        remote = data;
+        if (!current) return;
+        var stillExists = remote.profiles.some(function (p) { return p.id === current.id; });
+        if (!stillExists) { signOut(); return; }
+        quotes = remote.quotes[current.id] || [];
+        renderList();
+        updateHeroFav();
+      }).catch(function () { /* silent — next poll retries */ });
+    }, 20000);
+  }
+  function stopPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  /* ---- Sign in / out ---- */
+  function enterApp(profile) {
+    current = profile;
+    try { localStorage.setItem(SESSION_KEY, profile.id); } catch (e) {}
+    quotes = remote.quotes[profile.id] || [];
+    lastShownId = null;
+    openId = null;
+    favOnly = false;
+    $('fav-filter').setAttribute('aria-pressed', 'false');
+    resetForm();
+    $('search').value = '';
+    $('backup-box').value = '';
+    $('backup-status').textContent = '';
+    $('whoami-name').textContent = profile.name;
+    setSync('');
+    checkLocalImport();
+    renderList();
+    showRandom();
+    startPolling();
+    if (location.hash === '#/app') showPage('app');
+    else location.hash = '#/app';
+  }
+
+  function signOut() {
+    current = null;
+    quotes = [];
+    stopPolling();
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    location.hash = '#/login';
+  }
+
+  $('signout').addEventListener('click', signOut);
+
+  /* ---- Sign-in page ---- */
+  function renderLogin(hint) {
+    if (hint) $('login-hint').textContent = hint;
+    var list = $('profile-list');
+    list.textContent = '';
+    $('profiles-empty').hidden = remote.profiles.length > 0;
+    $('newp').open = remote.profiles.length === 0;
+    $('np-error').textContent = '';
+
+    remote.profiles.forEach(function (p) {
+      var li = document.createElement('li');
+
+      var row = document.createElement('div');
+      row.className = 'profile-row';
+      var name = document.createElement('span');
+      name.className = 'pname';
+      name.textContent = p.name;
+      row.appendChild(name);
+      if (p.hash) {
+        var lock = document.createElement('span');
+        lock.className = 'lock';
+        lock.textContent = 'password';
+        row.appendChild(lock);
+      }
+      var enter = document.createElement('button');
+      enter.type = 'button';
+      enter.className = 'primary';
+      enter.textContent = 'Sign in';
+      row.appendChild(enter);
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'quiet danger';
+      del.textContent = 'Delete';
+      row.appendChild(del);
+      li.appendChild(row);
+
+      var pwRow = document.createElement('form');
+      pwRow.className = 'pw-row';
+      pwRow.hidden = true;
+      var pwInput = document.createElement('input');
+      pwInput.type = 'password';
+      pwInput.autocomplete = 'current-password';
+      pwInput.placeholder = 'Password for ' + p.name;
+      pwInput.setAttribute('aria-label', 'Password for ' + p.name);
+      var pwGo = document.createElement('button');
+      pwGo.type = 'submit';
+      pwGo.className = 'primary';
+      pwGo.textContent = 'Go';
+      var pwErr = document.createElement('p');
+      pwErr.className = 'form-error';
+      pwRow.appendChild(pwInput);
+      pwRow.appendChild(pwGo);
+      li.appendChild(pwRow);
+      li.appendChild(pwErr);
+
+      var pendingAction = 'signin';
+
+      function openPwRow(action, buttonLabel) {
+        pendingAction = action;
+        pwGo.textContent = buttonLabel;
+        pwRow.hidden = false;
+        pwErr.textContent = '';
+        pwInput.value = '';
+        pwInput.focus();
+      }
+
+      function deleteProfile() {
+        if (!confirm('Delete the profile “' + p.name + '” and every quote in it, for everyone? This can’t be undone.')) return;
+        del.disabled = true;
+        withRemote(function (data) {
+          data.profiles = data.profiles.filter(function (x) { return x.id !== p.id; });
+          delete data.quotes[p.id];
+        }).then(function (res) {
+          del.disabled = false;
+          if (res.ok) renderLogin('Profile “' + p.name + '” deleted.');
+          else { pwErr.textContent = res.message; renderLogin(''); }
+        });
+      }
+
+      enter.addEventListener('click', function () {
+        if (!p.hash) { enterApp(p); return; }
+        if (pwRow.hidden || pendingAction !== 'signin') openPwRow('signin', 'Go');
+        else pwInput.focus();
+      });
+
+      del.addEventListener('click', function () {
+        if (!p.hash) { deleteProfile(); return; }
+        openPwRow('delete', 'Confirm delete');
+      });
+
+      pwRow.addEventListener('submit', function (e) {
+        e.preventDefault();
+        pwGo.disabled = true;
+        hashPassword(p.salt, pwInput.value).then(function (h) {
+          pwGo.disabled = false;
+          if (h !== p.hash) {
+            pwErr.textContent = 'That’s not it — try again.';
+            pwInput.select();
+            return;
+          }
+          if (pendingAction === 'delete') deleteProfile();
+          else enterApp(p);
+        });
+      });
+
+      list.appendChild(li);
+    });
+  }
+
+  $('newp-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('np-name').value.trim();
+    var pass = $('np-pass').value;
+    var pass2 = $('np-pass2').value;
+    var err = $('np-error');
+    err.textContent = '';
+
+    if (!name) { err.textContent = 'Give the profile a name.'; return; }
+    if (pass !== pass2) { err.textContent = 'The passwords don’t match.'; return; }
+
+    $('np-submit').disabled = true;
+
+    var buildProfile = function () {
+      var profile = { id: uid('p'), name: name, salt: '', hash: '', created: new Date().toISOString() };
+      if (!pass) return Promise.resolve(profile);
+      profile.salt = uid('s');
+      return hashPassword(profile.salt, pass).then(function (h) {
+        profile.hash = h;
+        return profile;
+      });
+    };
+
+    buildProfile().then(function (profile) {
+      return withRemote(function (data) {
+        var taken = data.profiles.some(function (p) { return p.name.toLowerCase() === name.toLowerCase(); });
+        if (taken) return { abort: 'There’s already a profile called “' + name + '”.' };
+        data.profiles.push(profile);
+        data.quotes[profile.id] = [];
+        return { result: profile };
+      });
+    }).then(function (res) {
+      $('np-submit').disabled = false;
+      if (!res.ok) { err.textContent = res.message; return; }
+      $('newp-form').reset();
+      enterApp(res.result);
+    });
+  });
+
+  /* ---- Favorites ---- */
+  function toggleFav(id) {
+    setSync('Saving…');
+    withRemote(function (data) {
+      var list = data.quotes[current.id] || (data.quotes[current.id] = []);
+      var q = list.find(function (x) { return x.id === id; });
+      if (q) q.fav = !q.fav;
+    }).then(function (res) {
+      if (!res.ok) { setSync(res.message, true); return; }
+      quotes = remote.quotes[current.id] || [];
+      setSync('');
+      renderList();
+      if (lastShownId === id) updateHeroFav();
+    });
   }
 
   function updateHeroFav() {
-    const btn = $('hero-fav');
-    const q = quotes.find((x) => x.id === lastShownId);
+    var btn = $('hero-fav');
+    var q = quotes.find(function (x) { return x.id === lastShownId; });
     if (!q) { btn.hidden = true; return; }
     btn.hidden = false;
     btn.innerHTML = q.fav ? '&#9733; Favorited' : '&#9734; Favorite';
@@ -667,7 +823,7 @@
 
   /* ---- Random quote ---- */
   function showRandom() {
-    const hero = $('hero');
+    var hero = $('hero');
     if (quotes.length === 0) {
       $('hero-text').textContent = 'Nothing here yet.';
       $('hero-who').textContent = 'Add the first quote you can remember below — the rest come back once you start.';
@@ -678,18 +834,18 @@
       return;
     }
     $('shuffle').hidden = false;
-    const pool = quotes.length > 1 ? quotes.filter((q) => q.id !== lastShownId) : quotes;
-    const q = pool[Math.floor(Math.random() * pool.length)];
+    var pool = quotes.length > 1 ? quotes.filter(function (q) { return q.id !== lastShownId; }) : quotes;
+    var q = pool[Math.floor(Math.random() * pool.length)];
     lastShownId = q.id;
 
     $('hero-text').textContent = '“' + q.text + '”';
-    const who = $('hero-who');
+    var who = $('hero-who');
     who.textContent = '';
     who.appendChild(document.createTextNode('— '));
-    const strong = document.createElement('strong');
+    var strong = document.createElement('strong');
     strong.textContent = q.by || 'Unknown';
     who.appendChild(strong);
-    const note = $('hero-note');
+    var note = $('hero-note');
     note.textContent = q.note || '';
     note.hidden = !q.note;
     updateHeroFav();
@@ -701,36 +857,42 @@
 
   /* ---- Sharing ---- */
   function shareAsText(q) {
-    let line = '“' + q.text + '” — ' + (q.by || 'Unknown');
+    var line = '“' + q.text + '” — ' + (q.by || 'Unknown');
     if (q.note) line += ' (' + q.note + ')';
     return line;
   }
 
-  async function sendCopyTo(person, q, statusEl) {
-    try {
-      await push(ref(db, 'users/' + person.uid + '/quotes'), {
-        text: q.text, by: q.by || '', note: q.note || '',
-        added: new Date().toISOString(), fav: false, sharedBy: me.name
+  function sendCopyTo(person, q, statusEl) {
+    statusEl.textContent = 'Sending…';
+    var dupeFound = false;
+    withRemote(function (data) {
+      var list = data.quotes[person.id] || (data.quotes[person.id] = []);
+      dupeFound = list.some(function (x) { return x.text === q.text && (x.by || '') === (q.by || ''); });
+      if (dupeFound) return;
+      list.push({
+        id: uid('q'), text: q.text, by: q.by || '', note: q.note || '',
+        added: new Date().toISOString(), fav: false, sharedBy: current.name
       });
+    }).then(function (res) {
+      if (!res.ok) { statusEl.textContent = res.message; return; }
+      if (dupeFound) { statusEl.textContent = person.name + ' already has this one.'; return; }
       statusEl.textContent = 'Sent — it’s in ' + person.name + '’s collection now, on every device.';
-    } catch (e) {
-      statusEl.textContent = 'Couldn’t send to ' + person.name + ' (' + (e.message || 'error') + ').';
-    }
+    });
   }
 
   /* ---- List ---- */
   function renderList() {
-    const query = $('search').value.trim().toLowerCase();
-    const list = $('list');
-    const empty = $('empty');
+    var query = $('search').value.trim().toLowerCase();
+    var list = $('list');
+    var empty = $('empty');
     list.textContent = '';
 
-    const shown = quotes.filter((q) => {
+    var shown = quotes.filter(function (q) {
       if (favOnly && !q.fav) return false;
       if (!query) return true;
       return (q.text + ' ' + (q.by || '') + ' ' + (q.note || '')).toLowerCase().indexOf(query) !== -1;
     });
-    shown.sort((a, b) => (b.added || '').localeCompare(a.added || ''));
+    shown.sort(function (a, b) { return (b.added || '').localeCompare(a.added || ''); });
 
     empty.hidden = shown.length > 0;
     if (shown.length === 0) {
@@ -743,14 +905,14 @@
       }
     }
 
-    shown.forEach((q) => {
-      const li = document.createElement('li');
-      const isOpen = openId === q.id;
+    shown.forEach(function (q) {
+      var li = document.createElement('li');
+      var isOpen = openId === q.id;
       if (isOpen) li.classList.add('open');
 
-      const bq = document.createElement('blockquote');
+      var bq = document.createElement('blockquote');
       if (q.fav) {
-        const star = document.createElement('span');
+        var star = document.createElement('span');
         star.className = 'fav-mark';
         star.textContent = '★';
         star.setAttribute('aria-label', 'Favorite');
@@ -760,111 +922,112 @@
       li.appendChild(bq);
 
       if (q.note) {
-        const note = document.createElement('p');
+        var note = document.createElement('p');
         note.className = 'note';
         note.textContent = q.note;
         li.appendChild(note);
       }
 
-      const meta = document.createElement('div');
+      var meta = document.createElement('div');
       meta.className = 'meta';
-      const by = document.createElement('span');
+      var by = document.createElement('span');
       by.className = 'by';
       by.textContent = q.by || 'Unknown';
       meta.appendChild(by);
       if (q.sharedBy) {
-        const shared = document.createElement('span');
+        var shared = document.createElement('span');
         shared.className = 'shared';
         shared.textContent = 'shared by ' + q.sharedBy;
         meta.appendChild(shared);
       }
-      const date = document.createElement('span');
+      var date = document.createElement('span');
       date.className = 'date';
       date.textContent = q.added ? fmtDate(q.added) : '';
       meta.appendChild(date);
-      const spacer = document.createElement('span');
+      var spacer = document.createElement('span');
       spacer.className = 'spacer';
       meta.appendChild(spacer);
-      const hint = document.createElement('span');
+      var hint = document.createElement('span');
       hint.className = 'hint';
       hint.textContent = isOpen ? 'click to close' : 'click for actions';
       meta.appendChild(hint);
       li.appendChild(meta);
 
       if (isOpen) {
-        const actions = document.createElement('div');
+        var actions = document.createElement('div');
         actions.className = 'actions';
 
-        const fav = document.createElement('button');
+        var fav = document.createElement('button');
         fav.type = 'button';
         fav.innerHTML = q.fav ? '&#9733; Favorited' : '&#9734; Favorite';
         if (q.fav) fav.classList.add('star');
-        fav.addEventListener('click', () => toggleFav(q.id));
+        fav.addEventListener('click', function () { toggleFav(q.id); });
         actions.appendChild(fav);
 
-        const shareBtn = document.createElement('button');
+        var shareBtn = document.createElement('button');
         shareBtn.type = 'button';
         shareBtn.textContent = 'Share';
         actions.appendChild(shareBtn);
 
-        const edit = document.createElement('button');
+        var edit = document.createElement('button');
         edit.type = 'button';
         edit.className = 'quiet';
         edit.textContent = 'Edit';
-        edit.addEventListener('click', () => startEdit(q.id));
+        edit.addEventListener('click', function () { startEdit(q.id); });
         actions.appendChild(edit);
 
-        const del = document.createElement('button');
+        var del = document.createElement('button');
         del.type = 'button';
         del.className = 'quiet danger';
         del.textContent = 'Delete';
-        del.addEventListener('click', () => removeQuote(q.id));
+        del.addEventListener('click', function () { removeQuote(q.id); });
         actions.appendChild(del);
 
         li.appendChild(actions);
 
-        const sharePanel = document.createElement('div');
+        var sharePanel = document.createElement('div');
         sharePanel.className = 'share-panel';
         sharePanel.hidden = true;
 
-        const shareStatus = document.createElement('p');
+        var others = remote.profiles.filter(function (p) { return p.id !== current.id; });
+        var shareStatus = document.createElement('p');
         shareStatus.className = 'status';
 
-        if (family.length > 0) {
-          const t1 = document.createElement('p');
+        if (others.length > 0) {
+          var t1 = document.createElement('p');
           t1.className = 'share-title';
           t1.textContent = 'Send it straight to:';
           sharePanel.appendChild(t1);
-          const row1 = document.createElement('div');
+          var row1 = document.createElement('div');
           row1.className = 'share-row';
-          family.forEach((person) => {
-            const b = document.createElement('button');
+          others.forEach(function (p) {
+            var b = document.createElement('button');
             b.type = 'button';
-            b.textContent = person.name;
-            b.addEventListener('click', () => sendCopyTo(person, q, shareStatus));
+            b.textContent = p.name;
+            b.addEventListener('click', function () { sendCopyTo(p, q, shareStatus); });
             row1.appendChild(b);
           });
           sharePanel.appendChild(row1);
         } else {
-          const t1 = document.createElement('p');
-          t1.className = 'share-title';
-          t1.textContent = 'Nobody else has an account yet — once family sign up, they’ll show up here.';
-          sharePanel.appendChild(t1);
+          var t0 = document.createElement('p');
+          t0.className = 'share-title';
+          t0.textContent = 'Nobody else has a profile yet — once family sign up, they’ll show up here.';
+          sharePanel.appendChild(t0);
         }
 
-        const t2 = document.createElement('p');
+        var t2 = document.createElement('p');
         t2.className = 'share-title';
         t2.textContent = 'Or copy it to send in a message:';
         sharePanel.appendChild(t2);
-        const row2 = document.createElement('div');
+        var row2 = document.createElement('div');
         row2.className = 'share-row';
-        const copyTxt = document.createElement('button');
+        var copyTxt = document.createElement('button');
         copyTxt.type = 'button';
         copyTxt.textContent = 'Copy as text';
-        copyTxt.addEventListener('click', () => {
-          copyToClipboard(shareAsText(q), () => {
+        copyTxt.addEventListener('click', function () {
+          copyText(shareAsText(q), function () {
             shareStatus.textContent = 'Copied — paste it anywhere.';
-          }, () => {
+          }, function () {
             shareStatus.textContent = shareAsText(q);
           });
         });
@@ -873,12 +1036,12 @@
         sharePanel.appendChild(shareStatus);
         li.appendChild(sharePanel);
 
-        shareBtn.addEventListener('click', () => {
+        shareBtn.addEventListener('click', function () {
           sharePanel.hidden = !sharePanel.hidden;
         });
       }
 
-      li.addEventListener('click', (e) => {
+      li.addEventListener('click', function (e) {
         if (e.target.closest('button, input, form, a')) return;
         openId = isOpen ? null : q.id;
         renderList();
@@ -896,7 +1059,7 @@
     renderList();
   });
 
-  $('hero-fav').addEventListener('click', () => {
+  $('hero-fav').addEventListener('click', function () {
     if (lastShownId) toggleFav(lastShownId);
   });
 
@@ -911,7 +1074,7 @@
   }
 
   function startEdit(id) {
-    const q = quotes.find((x) => x.id === id);
+    var q = quotes.find(function (x) { return x.id === id; });
     if (!q) return;
     editingId = id;
     $('f-text').value = q.text;
@@ -924,41 +1087,67 @@
     $('f-text').focus();
   }
 
-  async function removeQuote(id) {
-    const q = quotes.find((x) => x.id === id);
+  function removeQuote(id) {
+    var q = quotes.find(function (x) { return x.id === id; });
     if (!q) return;
     if (!confirm('Delete this quote by ' + (q.by || 'Unknown') + '? This can’t be undone.')) return;
     if (editingId === id) resetForm();
     if (openId === id) openId = null;
-    try {
-      await remove(ref(db, 'users/' + me.uid + '/quotes/' + id));
-    } catch (e) {
-      $('backup-status').textContent = 'Couldn’t delete — check your connection.';
-    }
+    setSync('Saving…');
+    withRemote(function (data) {
+      var list = data.quotes[current.id] || [];
+      data.quotes[current.id] = list.filter(function (x) { return x.id !== id; });
+    }).then(function (res) {
+      if (!res.ok) { setSync(res.message, true); return; }
+      quotes = remote.quotes[current.id] || [];
+      setSync('');
+      renderList();
+      if (lastShownId === id) showRandom();
+    });
   }
 
-  $('add-form').addEventListener('submit', async (e) => {
+  $('add-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    const text = $('f-text').value.trim();
-    const by = $('f-by').value.trim();
-    const note = $('f-note').value.trim();
+    var text = $('f-text').value.trim();
+    var by = $('f-by').value.trim();
+    var note = $('f-note').value.trim();
     if (!text || !by) return;
-    $('f-submit').disabled = true;
 
-    try {
-      if (editingId) {
-        await update(ref(db, 'users/' + me.uid + '/quotes/' + editingId), { text, by, note });
+    $('f-submit').disabled = true;
+    setSync('Saving…');
+
+    if (editingId) {
+      var editId = editingId;
+      withRemote(function (data) {
+        var list = data.quotes[current.id] || [];
+        var q = list.find(function (x) { return x.id === editId; });
+        if (q) { q.text = text; q.by = by; q.note = note; }
+      }).then(function (res) {
+        $('f-submit').disabled = false;
+        if (!res.ok) { setSync(res.message, true); return; }
+        quotes = remote.quotes[current.id] || [];
+        setSync('');
+        var wasShown = lastShownId === editId;
         resetForm();
-      } else {
-        await addQuote(quoteData(text, by, note));
+        renderList();
+        if (wasShown) showRandom();
+      });
+    } else {
+      withRemote(function (data) {
+        var list = data.quotes[current.id] || (data.quotes[current.id] = []);
+        list.push({ id: uid('q'), text: text, by: by, note: note, added: new Date().toISOString(), fav: false, sharedBy: '' });
+      }).then(function (res) {
+        $('f-submit').disabled = false;
+        if (!res.ok) { setSync(res.message, true); return; }
+        quotes = remote.quotes[current.id] || [];
+        setSync('');
+        var first = quotes.length === 1;
         resetForm();
+        renderList();
+        if (first) showRandom();
         $('f-hint').textContent = 'Saved.';
-        setTimeout(() => { if (!editingId) $('f-hint').textContent = ''; }, 2000);
-      }
-    } catch (err) {
-      $('f-hint').textContent = 'Couldn’t save (' + (err.code || 'error') + ') — try again.';
-    } finally {
-      $('f-submit').disabled = false;
+        setTimeout(function () { if (!editingId) $('f-hint').textContent = ''; }, 2000);
+      });
     }
   });
 
@@ -967,24 +1156,25 @@
   $('search').addEventListener('input', renderList);
 
   /* ---- Bulk copy / paste ---- */
-  $('backup-copy').addEventListener('click', () => {
-    const payload = JSON.stringify(
-      quotes.map(({ text, by, note, added, fav, sharedBy }) => ({ text, by, note, added, fav, sharedBy })),
-      null, 2
+  $('backup-copy').addEventListener('click', function () {
+    var payload = JSON.stringify(
+      quotes.map(function (q) {
+        return { text: q.text, by: q.by, note: q.note, added: q.added, fav: q.fav, sharedBy: q.sharedBy };
+      }), null, 2
     );
     $('backup-box').value = payload;
-    copyToClipboard(payload, () => {
+    copyText(payload, function () {
       $('backup-status').textContent = 'Copied your whole collection as text.';
-    }, () => {
+    }, function () {
       $('backup-box').select();
       $('backup-status').textContent = 'Your collection is in the box above — copy it with Ctrl/Cmd+C.';
     });
   });
 
-  $('backup-load').addEventListener('click', async () => {
-    const raw = $('backup-box').value.trim();
+  $('backup-load').addEventListener('click', function () {
+    var raw = $('backup-box').value.trim();
     if (!raw) { $('backup-status').textContent = 'Paste quotes into the box first.'; return; }
-    let incoming;
+    var incoming;
     try { incoming = JSON.parse(raw); } catch (e) {
       $('backup-status').textContent = 'That doesn’t look like Quill data — paste the whole thing.';
       return;
@@ -994,65 +1184,105 @@
       $('backup-status').textContent = 'That doesn’t look like Quill data — paste the whole thing.';
       return;
     }
-    await importQuotes(incoming, $('backup-status'));
+    importQuotes(incoming, $('backup-status'));
   });
 
-  async function importQuotes(rows, statusEl) {
-    let added = 0, skipped = 0, failed = 0;
-    statusEl.textContent = 'Adding…';
-    for (const inQ of rows) {
-      if (!inQ || typeof inQ.text !== 'string' || !inQ.text.trim()) continue;
-      const dupe = quotes.some((x) => x.text === inQ.text && (x.by || '') === (inQ.by || ''));
-      if (dupe) { skipped++; continue; }
-      try {
-        await addQuote({
+  function importQuotes(rows, statusEl) {
+    var clean = rows
+      .filter(function (inQ) { return inQ && typeof inQ.text === 'string' && inQ.text.trim(); })
+      .map(function (inQ) {
+        return {
+          id: uid('q'),
           text: inQ.text,
           by: typeof inQ.by === 'string' ? inQ.by : '',
           note: typeof inQ.note === 'string' ? inQ.note : '',
           added: typeof inQ.added === 'string' ? inQ.added : new Date().toISOString(),
           fav: !!inQ.fav,
           sharedBy: typeof inQ.sharedBy === 'string' ? inQ.sharedBy : ''
-        });
+        };
+      });
+
+    statusEl.textContent = 'Adding…';
+    var added = 0, skipped = 0;
+    withRemote(function (data) {
+      var list = data.quotes[current.id] || (data.quotes[current.id] = []);
+      clean.forEach(function (c) {
+        var dupe = list.some(function (x) { return x.text === c.text && (x.by || '') === (c.by || ''); });
+        if (dupe) { skipped++; return; }
+        list.push(c);
         added++;
-      } catch (e) { failed++; }
-    }
-    statusEl.textContent = 'Added ' + added + (skipped ? ', skipped ' + skipped + ' you already had' : '') +
-      (failed ? ', ' + failed + ' failed' : '') + '. Nothing was deleted.';
+      });
+    }).then(function (res) {
+      if (!res.ok) { statusEl.textContent = res.message; return; }
+      quotes = remote.quotes[current.id] || [];
+      renderList();
+      showRandom();
+      statusEl.textContent = 'Added ' + added + (skipped ? ', skipped ' + skipped + ' you already had' : '') + '. Nothing was deleted.';
+    });
   }
 
-  /* ---- One-time import of quotes saved by the old offline Quill ---- */
+  /* ---- One-time import of quotes saved by the old offline Quill in this browser ---- */
   function checkLocalImport() {
-    const found = [];
+    var found = [];
     try {
-      const legacy = JSON.parse(localStorage.getItem('quill.quotes.v1') || 'null');
+      var legacy = JSON.parse(localStorage.getItem('quill.quotes.v1') || 'null');
       if (Array.isArray(legacy) && legacy.length) found.push({ label: 'earlier quotes', rows: legacy });
-      const profiles = JSON.parse(localStorage.getItem('quill.profiles.v1') || '[]');
+      var profiles = JSON.parse(localStorage.getItem('quill.profiles.v1') || '[]');
       if (Array.isArray(profiles)) {
-        profiles.forEach((p) => {
-          const rows = JSON.parse(localStorage.getItem('quill.quotes.v1.' + p.id) || 'null');
+        profiles.forEach(function (p) {
+          var rows = JSON.parse(localStorage.getItem('quill.quotes.v1.' + p.id) || 'null');
           if (Array.isArray(rows) && rows.length) {
-            found.push({ label: p.name + '’s ' + rows.length + ' quote' + (rows.length === 1 ? '' : 's'), rows });
+            found.push({ label: p.name + '’s ' + rows.length + ' quote' + (rows.length === 1 ? '' : 's'), rows: rows });
           }
         });
       }
     } catch (e) { /* nothing importable */ }
 
-    const box = $('local-import');
-    const buttons = $('local-import-buttons');
+    var box = $('local-import');
+    var buttons = $('local-import-buttons');
     buttons.textContent = '';
     box.hidden = found.length === 0;
     if (found.length === 0) return;
     $('local-import-label').textContent = 'This browser has quotes from the offline version of Quill. Bring them into your account:';
-    found.forEach((f) => {
-      const b = document.createElement('button');
+    found.forEach(function (f) {
+      var b = document.createElement('button');
       b.type = 'button';
       b.textContent = 'Import ' + f.label;
-      b.addEventListener('click', () => importQuotes(f.rows, $('backup-status')));
+      b.addEventListener('click', function () { importQuotes(f.rows, $('backup-status')); });
       buttons.appendChild(b);
     });
   }
 
-  route();
+  /* ---- Boot ---- */
+  function boot() {
+    $('boot-message').textContent = 'Connecting to your quotes…';
+    $('boot-actions').hidden = true;
+
+    if (!NPOINT_URL || NPOINT_URL.indexOf('PASTE_') === 0) {
+      $('boot-message').textContent = 'Quill isn’t connected to npoint yet — open index.html and set QUILL_NPOINT_URL near the top to your bin’s URL.';
+      return;
+    }
+
+    fetchBin().then(function (data) {
+      remote = data;
+      var sessionId = null;
+      try { sessionId = localStorage.getItem(SESSION_KEY); } catch (e) {}
+      var remembered = remote.profiles.find(function (p) { return p.id === sessionId; });
+      if (remembered) {
+        enterApp(remembered);
+      } else {
+        route();
+      }
+    }).catch(function (err) {
+      $('boot-message').textContent = (err && err.message) || 'Couldn’t connect to your npoint store.';
+      $('boot-actions').hidden = false;
+    });
+  }
+
+  $('boot-retry').addEventListener('click', boot);
+
+  boot();
+})();
 </script>
 </body>
 </html>
