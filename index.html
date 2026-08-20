@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quill</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHBhdGggZD0iTTI3IDNDMjAgMyAxMCA5IDYgMTdDMyAyMyAzIDI3IDQgMjhDNSAyNyA4IDI0IDExIDIwQzE2IDEzIDI0IDggMjcgM1oiIGZpbGw9IiNFOEE5M0MiLz48L3N2Zz4=">
 <script>
   /* ============================================================
      Your Firebase web app config goes here.
@@ -79,6 +80,19 @@
   .wrap[hidden] { display: none; }
 
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .logo-row { display: flex; align-items: center; gap: 0.5rem; }
+  .feather {
+    width: 1.7rem;
+    height: 1.7rem;
+    flex-shrink: 0;
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .feather .barb { stroke-width: 1.1; opacity: 0.6; }
+  .feather .nib-dot { stroke: none; fill: var(--mark); }
   .wordmark {
     font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     font-size: 1.6rem;
@@ -313,7 +327,17 @@
 <div class="wrap" id="boot-view">
   <header>
     <div>
-      <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      <div class="logo-row">
+        <svg class="feather" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M27 3C20 3 10 9 6 17C3 23 3 27 4 28C5 27 8 24 11 20C16 13 24 8 27 3Z" />
+          <path class="spine" d="M25 5 L4 27" />
+          <path class="barb" d="M20 9 L15 11" />
+          <path class="barb" d="M16 14 L11 16" />
+          <path class="barb" d="M12 18 L8 20" />
+          <circle class="nib-dot" cx="4" cy="27.5" r="1.5" />
+        </svg>
+        <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      </div>
       <p class="tagline">The funny things they said.</p>
     </div>
   </header>
@@ -327,7 +351,17 @@
 <div class="wrap" id="login-view" hidden>
   <header>
     <div>
-      <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      <div class="logo-row">
+        <svg class="feather" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M27 3C20 3 10 9 6 17C3 23 3 27 4 28C5 27 8 24 11 20C16 13 24 8 27 3Z" />
+          <path class="spine" d="M25 5 L4 27" />
+          <path class="barb" d="M20 9 L15 11" />
+          <path class="barb" d="M16 14 L11 16" />
+          <path class="barb" d="M12 18 L8 20" />
+          <circle class="nib-dot" cx="4" cy="27.5" r="1.5" />
+        </svg>
+        <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      </div>
       <p class="tagline">The funny things they said.</p>
     </div>
   </header>
@@ -381,7 +415,17 @@
 <div class="wrap" id="app-view" hidden>
   <header>
     <div>
-      <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      <div class="logo-row">
+        <svg class="feather" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M27 3C20 3 10 9 6 17C3 23 3 27 4 28C5 27 8 24 11 20C16 13 24 8 27 3Z" />
+          <path class="spine" d="M25 5 L4 27" />
+          <path class="barb" d="M20 9 L15 11" />
+          <path class="barb" d="M16 14 L11 16" />
+          <path class="barb" d="M12 18 L8 20" />
+          <circle class="nib-dot" cx="4" cy="27.5" r="1.5" />
+        </svg>
+        <h1 class="wordmark">Quill<span class="nib">.</span></h1>
+      </div>
       <p class="tagline">The funny things they said.</p>
     </div>
     <div class="whoami">
