@@ -205,6 +205,7 @@
     margin: 0 0 0.75rem;
   }
 
+  #add-section { margin-top: 1rem; }
   form.add, .panel {
     background: var(--card);
     border: 1px solid var(--line);
@@ -426,23 +427,26 @@
   </section>
 
   <section>
-    <h2 id="form-title">Add a quote</h2>
-    <form class="add" id="add-form">
-      <label>The quote
-        <textarea id="f-text" required placeholder="Write it the way they said it&hellip;"></textarea>
-      </label>
-      <label>Who said it
-        <input id="f-by" required placeholder="Uncle Ray, Mom, Dave from next door&hellip;">
-      </label>
-      <label>Context <span style="text-transform:none; letter-spacing:0;">(optional)</span>
-        <input id="f-note" placeholder="Thanksgiving 2019, after the turkey incident">
-      </label>
-      <div class="form-actions">
-        <button class="primary" type="submit" id="f-submit">Save quote</button>
-        <button type="button" id="f-cancel" hidden>Cancel</button>
-        <p class="form-hint" id="f-hint"></p>
-      </div>
-    </form>
+    <button class="primary" type="button" id="add-quote-toggle">+ Add a quote</button>
+    <div id="add-section" hidden>
+      <h2 id="form-title">Add a quote</h2>
+      <form class="add" id="add-form">
+        <label>The quote
+          <textarea id="f-text" required placeholder="Write it the way they said it&hellip;"></textarea>
+        </label>
+        <label>Who said it
+          <input id="f-by" required placeholder="Uncle Ray, Mom, Dave from next door&hellip;">
+        </label>
+        <label>Context <span style="text-transform:none; letter-spacing:0;">(optional)</span>
+          <input id="f-note" placeholder="Thanksgiving 2019, after the turkey incident">
+        </label>
+        <div class="form-actions">
+          <button class="primary" type="submit" id="f-submit">Save quote</button>
+          <button type="button" id="f-cancel">Cancel</button>
+          <p class="form-hint" id="f-hint"></p>
+        </div>
+      </form>
+    </div>
   </section>
 
   <section>
@@ -469,6 +473,12 @@
         <button type="button" id="backup-load">Add these quotes</button>
       </div>
       <p class="status" id="backup-status"></p>
+
+      <p class="form-hint">If quotes show garbled characters like <code>â€™</code> instead of an apostrophe (usually from pasting through a text editor that misread the encoding), this fixes them in place.</p>
+      <div class="backup-actions">
+        <button type="button" id="fix-mojibake">Fix garbled text</button>
+      </div>
+      <p class="status" id="mojibake-status"></p>
     </div>
   </details>
 </div>
@@ -592,6 +602,7 @@
     favOnly = false;
     $('fav-filter').setAttribute('aria-pressed', 'false');
     resetForm();
+    closeAddSection();
     $('search').value = '';
     $('backup-box').value = '';
     $('backup-status').textContent = '';
@@ -679,6 +690,56 @@
     try {
       return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
     } catch (e) { return ''; }
+  }
+
+  function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /* ---- Garbled-text repair ----
+     Fixes text that was UTF-8, then misread as Windows-1252 somewhere in a
+     copy/paste chain (e.g. "It's" -> "Itâ€™s"). Only touches text that
+     matches the specific "â€" telltale pattern, and only accepts the
+     reversal if the resulting bytes decode as valid UTF-8 — so it never
+     mangles text that wasn't actually corrupted this way. */
+  const CP1252_TO_BYTE = {
+    0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87,
+    0x02C6: 0x88, 0x2030: 0x89, 0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C, 0x017D: 0x8E,
+    0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93, 0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
+    0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B, 0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F
+  };
+
+  function looksMojibake(s) {
+    return typeof s === 'string' && /â€|Ã[-¿]/.test(s);
+  }
+
+  function fixMojibake(s) {
+    if (!looksMojibake(s)) return s;
+    const bytes = [];
+    for (const ch of s) {
+      const cp = ch.codePointAt(0);
+      let byte;
+      if (cp <= 0xFF) byte = cp;
+      else if (CP1252_TO_BYTE[cp] !== undefined) byte = CP1252_TO_BYTE[cp];
+      else return s;
+      bytes.push(byte);
+    }
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes));
+    } catch (e) {
+      return s;
+    }
+  }
+
+  function matchesSearch(q, query) {
+    if (!query) return true;
+    try {
+      const re = new RegExp('\\b' + escapeRegExp(query), 'i');
+      return re.test(q.text) || re.test(q.by || '') || re.test(q.note || '');
+    } catch (e) {
+      const needle = query.toLowerCase();
+      return (q.text + ' ' + (q.by || '') + ' ' + (q.note || '')).toLowerCase().indexOf(needle) !== -1;
+    }
   }
 
   function copyToClipboard(text, onCopied, onManual) {
@@ -771,8 +832,7 @@
 
     const shown = quotes.filter((q) => {
       if (favOnly && !q.fav) return false;
-      if (!query) return true;
-      return (q.text + ' ' + (q.by || '') + ' ' + (q.note || '')).toLowerCase().indexOf(query) !== -1;
+      return matchesSearch(q, query);
     });
     shown.sort((a, b) => (b.added || '').localeCompare(a.added || ''));
 
@@ -945,12 +1005,24 @@
   });
 
   /* ---- Add / edit / delete ---- */
+  const NOTE_PLACEHOLDER = 'Thanksgiving 2019, after the turkey incident';
+
+  function openAddSection() {
+    $('add-section').hidden = false;
+    $('add-quote-toggle').hidden = true;
+  }
+
+  function closeAddSection() {
+    $('add-section').hidden = true;
+    $('add-quote-toggle').hidden = false;
+  }
+
   function resetForm() {
     editingId = null;
     $('add-form').reset();
+    $('f-note').placeholder = NOTE_PLACEHOLDER;
     $('form-title').textContent = 'Add a quote';
     $('f-submit').textContent = 'Save quote';
-    $('f-cancel').hidden = true;
     $('f-hint').textContent = '';
   }
 
@@ -961,9 +1033,10 @@
     $('f-text').value = q.text;
     $('f-by').value = q.by || '';
     $('f-note').value = q.note || '';
+    $('f-note').placeholder = '';
     $('form-title').textContent = 'Edit quote';
     $('f-submit').textContent = 'Save changes';
-    $('f-cancel').hidden = false;
+    openAddSection();
     $('add-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
     $('f-text').focus();
   }
@@ -993,6 +1066,7 @@
       if (editingId) {
         await update(ref(db, 'users/' + me.uid + '/quotes/' + editingId), { text, by, note });
         resetForm();
+        closeAddSection();
       } else {
         await addQuote(quoteData(text, by, note));
         resetForm();
@@ -1006,7 +1080,8 @@
     }
   });
 
-  $('f-cancel').addEventListener('click', resetForm);
+  $('add-quote-toggle').addEventListener('click', openAddSection);
+  $('f-cancel').addEventListener('click', () => { resetForm(); closeAddSection(); });
   $('shuffle').addEventListener('click', showRandom);
   $('search').addEventListener('input', renderList);
 
@@ -1039,6 +1114,33 @@
       return;
     }
     await importQuotes(incoming, $('backup-status'));
+  });
+
+  $('fix-mojibake').addEventListener('click', async () => {
+    const statusEl = $('mojibake-status');
+    const btn = $('fix-mojibake');
+    btn.disabled = true;
+    statusEl.textContent = 'Checking…';
+    let fixedCount = 0;
+    const checked = quotes.length;
+    try {
+      for (const q of quotes) {
+        const newText = fixMojibake(q.text);
+        const newBy = fixMojibake(q.by || '');
+        const newNote = fixMojibake(q.note || '');
+        if (newText !== q.text || newBy !== (q.by || '') || newNote !== (q.note || '')) {
+          await update(ref(db, 'users/' + me.uid + '/quotes/' + q.id), { text: newText, by: newBy, note: newNote });
+          fixedCount++;
+        }
+      }
+      statusEl.textContent = fixedCount === 0
+        ? 'Checked ' + checked + ' quotes — nothing looked garbled.'
+        : 'Fixed ' + fixedCount + ' of ' + checked + ' quotes.';
+    } catch (err) {
+      statusEl.textContent = 'Something went wrong (' + (err.message || 'error') + ') — run it again to pick up where it left off.';
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   async function importQuotes(rows, statusEl) {
