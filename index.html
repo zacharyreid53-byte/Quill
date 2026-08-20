@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quill</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHBhdGggZD0iTTI3IDNDMjAgMyAxMCA5IDYgMTdDMyAyMyAzIDI3IDQgMjhDNSAyNyA4IDI0IDExIDIwQzE2IDEzIDI0IDggMjcgM1oiIGZpbGw9IiNFOEE5M0MiLz48L3N2Zz4=">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNCAzNCI+PHBhdGggZD0iTTI4IDNMMjMgN0wyNSA4TDE4IDEzTDIwIDE0TDEzIDE4TDEwIDIxQzYgMTYgOSA4IDI4IDNaIiBmaWxsPSIjMjYyMjFDIi8+PHBhdGggZD0iTTkgMjJMNCAyOC41TDMgMzBMNSAyNy41TDEwIDIyLjVaIiBmaWxsPSIjMjYyMjFDIi8+PGNpcmNsZSBjeD0iMyIgY3k9IjMwIiByPSIxLjYiIGZpbGw9IiNFOEE5M0MiLz48L3N2Zz4=">
 <script>
   /* ============================================================
      Your Firebase web app config goes here.
@@ -81,18 +81,16 @@
 
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
   .logo-row { display: flex; align-items: center; gap: 0.5rem; }
-  .feather {
-    width: 1.7rem;
-    height: 1.7rem;
-    flex-shrink: 0;
+  .feather { width: 1.9rem; height: 1.9rem; flex-shrink: 0; }
+  .feather .quill-body { fill: var(--ink); }
+  .feather .nib-dot { fill: var(--mark); }
+  .feather .flourish {
     fill: none;
     stroke: var(--ink);
-    stroke-width: 1.6;
+    stroke-width: 1;
     stroke-linecap: round;
-    stroke-linejoin: round;
+    opacity: 0.55;
   }
-  .feather .barb { stroke-width: 1.1; opacity: 0.6; }
-  .feather .nib-dot { stroke: none; fill: var(--mark); }
   .wordmark {
     font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     font-size: 1.6rem;
@@ -312,7 +310,7 @@
     font-size: 0.95rem;
   }
 
-  .auth-columns { display: flex; flex-direction: column; gap: 2.25rem; }
+  .panel[hidden] { display: none; }
 
   details.backup { border-top: 1px solid var(--line); padding-top: 1.25rem; }
   details summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); }
@@ -328,13 +326,11 @@
   <header>
     <div>
       <div class="logo-row">
-        <svg class="feather" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M27 3C20 3 10 9 6 17C3 23 3 27 4 28C5 27 8 24 11 20C16 13 24 8 27 3Z" />
-          <path class="spine" d="M25 5 L4 27" />
-          <path class="barb" d="M20 9 L15 11" />
-          <path class="barb" d="M16 14 L11 16" />
-          <path class="barb" d="M12 18 L8 20" />
-          <circle class="nib-dot" cx="4" cy="27.5" r="1.5" />
+        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
+          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
+          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
+          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
         </svg>
         <h1 class="wordmark">Quill<span class="nib">.</span></h1>
       </div>
@@ -352,13 +348,11 @@
   <header>
     <div>
       <div class="logo-row">
-        <svg class="feather" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M27 3C20 3 10 9 6 17C3 23 3 27 4 28C5 27 8 24 11 20C16 13 24 8 27 3Z" />
-          <path class="spine" d="M25 5 L4 27" />
-          <path class="barb" d="M20 9 L15 11" />
-          <path class="barb" d="M16 14 L11 16" />
-          <path class="barb" d="M12 18 L8 20" />
-          <circle class="nib-dot" cx="4" cy="27.5" r="1.5" />
+        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
+          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
+          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
+          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
         </svg>
         <h1 class="wordmark">Quill<span class="nib">.</span></h1>
       </div>
@@ -366,49 +360,38 @@
     </div>
   </header>
 
-  <section class="hero">
-    <span class="mark" aria-hidden="true">&ldquo;</span>
-    <p class="login-intro">Sign in, and your quotes follow you to any device.</p>
-    <p class="form-hint" id="login-hint" style="margin-top:0.75rem;"></p>
+  <section>
+    <h2 id="auth-heading">Sign in</h2>
+    <form class="panel" id="signin-form">
+      <label>Username
+        <input id="si-username" type="text" required autocomplete="username" placeholder="zach">
+      </label>
+      <label>Password
+        <input id="si-pass" type="password" required autocomplete="current-password">
+      </label>
+      <div class="form-actions">
+        <button class="primary" type="submit" id="si-submit">Sign in</button>
+      </div>
+      <p class="form-error" id="si-error"></p>
+    </form>
+
+    <form class="panel" id="signup-form" hidden>
+      <label>Username <span style="text-transform:none;">(how you'll appear to family when sharing)</span>
+        <input id="su-username" type="text" required maxlength="40" autocomplete="username" placeholder="zach">
+      </label>
+      <label>Password <span style="text-transform:none;">(at least 6 characters)</span>
+        <input id="su-pass" type="password" required minlength="6" autocomplete="new-password">
+      </label>
+      <div class="form-actions">
+        <button class="primary" type="submit" id="su-submit">Create account</button>
+      </div>
+      <p class="form-error" id="su-error"></p>
+    </form>
+
+    <p class="form-hint">
+      <button type="button" class="quiet" id="auth-toggle-btn">New here? Create an account</button>
+    </p>
   </section>
-
-  <div class="auth-columns">
-    <section>
-      <h2>Sign in</h2>
-      <form class="panel" id="signin-form">
-        <label>Email
-          <input id="si-email" type="email" required autocomplete="email" placeholder="you@example.com">
-        </label>
-        <label>Password
-          <input id="si-pass" type="password" required autocomplete="current-password">
-        </label>
-        <div class="form-actions">
-          <button class="primary" type="submit" id="si-submit">Sign in</button>
-          <button class="quiet" type="button" id="si-forgot">Forgot password?</button>
-        </div>
-        <p class="form-error" id="si-error"></p>
-      </form>
-    </section>
-
-    <section>
-      <h2>New here? Create an account</h2>
-      <form class="panel" id="signup-form">
-        <label>Your name <span style="text-transform:none;">(how you'll appear to family when sharing)</span>
-          <input id="su-name" required maxlength="40" placeholder="Zach">
-        </label>
-        <label>Email
-          <input id="su-email" type="email" required autocomplete="email" placeholder="you@example.com">
-        </label>
-        <label>Password <span style="text-transform:none;">(at least 6 characters)</span>
-          <input id="su-pass" type="password" required minlength="6" autocomplete="new-password">
-        </label>
-        <div class="form-actions">
-          <button class="primary" type="submit" id="su-submit">Create account</button>
-        </div>
-        <p class="form-error" id="su-error"></p>
-      </form>
-    </section>
-  </div>
 </div>
 
 <!-- ============ App page (#/app) ============ -->
@@ -416,13 +399,11 @@
   <header>
     <div>
       <div class="logo-row">
-        <svg class="feather" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M27 3C20 3 10 9 6 17C3 23 3 27 4 28C5 27 8 24 11 20C16 13 24 8 27 3Z" />
-          <path class="spine" d="M25 5 L4 27" />
-          <path class="barb" d="M20 9 L15 11" />
-          <path class="barb" d="M16 14 L11 16" />
-          <path class="barb" d="M12 18 L8 20" />
-          <circle class="nib-dot" cx="4" cy="27.5" r="1.5" />
+        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
+          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
+          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
+          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
         </svg>
         <h1 class="wordmark">Quill<span class="nib">.</span></h1>
       </div>
@@ -498,7 +479,7 @@
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
   import {
     getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
-    signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail
+    signInWithEmailAndPassword, signOut, updateProfile
   } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
   import {
     getDatabase, ref, push, set, update, remove, onValue, get
@@ -548,12 +529,26 @@
   }
   window.addEventListener('hashchange', route);
 
+  const USERNAME_DOMAIN = '@users.quill.app';
+
+  function normalizeUsername(raw) {
+    return (raw || '').trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+  }
+
+  function usernameToEmail(raw) {
+    return normalizeUsername(raw) + USERNAME_DOMAIN;
+  }
+
+  function emailToUsername(email) {
+    return (email || '').split('@')[0];
+  }
+
   function friendlyAuthError(err) {
     const code = err && err.code || '';
-    if (code.includes('email-already-in-use')) return 'There’s already an account with that email — sign in on the left instead.';
-    if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return 'Email or password isn’t right.';
+    if (code.includes('email-already-in-use')) return 'That username is taken — try another.';
+    if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return 'Username or password isn’t right.';
     if (code.includes('weak-password')) return 'Password needs at least 6 characters.';
-    if (code.includes('invalid-email')) return 'That email doesn’t look right.';
+    if (code.includes('invalid-email')) return 'That username has characters we can’t use — stick to letters, numbers, dots, underscores, and hyphens.';
     if (code.includes('too-many-requests')) return 'Too many tries — wait a minute and try again.';
     if (code.includes('network-request-failed')) return 'Can’t reach the server — check your connection.';
     return 'Something went wrong (' + (code || 'unknown') + '). Try again.';
@@ -572,7 +567,7 @@
       return;
     }
 
-    me = { uid: user.uid, name: user.displayName || (user.email || '').split('@')[0] };
+    me = { uid: user.uid, name: user.displayName || emailToUsername(user.email) };
     $('whoami-name').textContent = me.name;
 
     /* Keep the family directory entry fresh so others can share with us. */
@@ -619,12 +614,29 @@
   }
 
   /* ---- Sign in / sign up / sign out ---- */
+  let authMode = 'signin';
+  function setAuthMode(mode) {
+    authMode = mode;
+    const isSignin = mode === 'signin';
+    $('signin-form').hidden = !isSignin;
+    $('signup-form').hidden = isSignin;
+    $('auth-heading').textContent = isSignin ? 'Sign in' : 'Create an account';
+    $('auth-toggle-btn').textContent = isSignin ? 'New here? Create an account' : 'Already have an account? Sign in';
+    $('si-error').textContent = '';
+    $('su-error').textContent = '';
+  }
+  $('auth-toggle-btn').addEventListener('click', () => {
+    setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+  });
+
   $('signin-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     $('si-error').textContent = '';
+    const username = normalizeUsername($('si-username').value);
+    if (!username) { $('si-error').textContent = 'Enter your username.'; return; }
     $('si-submit').disabled = true;
     try {
-      await signInWithEmailAndPassword(auth, $('si-email').value.trim(), $('si-pass').value);
+      await signInWithEmailAndPassword(auth, usernameToEmail(username), $('si-pass').value);
       $('signin-form').reset();
     } catch (err) {
       $('si-error').textContent = friendlyAuthError(err);
@@ -633,30 +645,19 @@
     }
   });
 
-  $('si-forgot').addEventListener('click', async () => {
-    const email = $('si-email').value.trim();
-    if (!email) { $('si-error').textContent = 'Type your email above first, then press “Forgot password?”.'; return; }
-    try {
-      await sendPasswordResetEmail(auth, email);
-      $('si-error').textContent = '';
-      $('login-hint').textContent = 'Password reset email sent to ' + email + ' — check your inbox.';
-    } catch (err) {
-      $('si-error').textContent = friendlyAuthError(err);
-    }
-  });
-
   $('signup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     $('su-error').textContent = '';
-    const name = $('su-name').value.trim();
-    if (!name) { $('su-error').textContent = 'Tell us your name — it’s how family sees you when sharing.'; return; }
+    const rawUsername = $('su-username').value.trim();
+    const username = normalizeUsername(rawUsername);
+    if (!username) { $('su-error').textContent = 'Usernames can only use letters, numbers, dots, underscores, and hyphens.'; return; }
     $('su-submit').disabled = true;
     try {
-      const cred = await createUserWithEmailAndPassword(auth, $('su-email').value.trim(), $('su-pass').value);
-      await updateProfile(cred.user, { displayName: name });
-      await set(ref(db, 'directory/' + cred.user.uid), { name });
-      me = { uid: cred.user.uid, name };
-      $('whoami-name').textContent = name;
+      const cred = await createUserWithEmailAndPassword(auth, usernameToEmail(username), $('su-pass').value);
+      await updateProfile(cred.user, { displayName: rawUsername });
+      await set(ref(db, 'directory/' + cred.user.uid), { name: rawUsername });
+      me = { uid: cred.user.uid, name: rawUsername };
+      $('whoami-name').textContent = rawUsername;
       $('signup-form').reset();
     } catch (err) {
       $('su-error').textContent = friendlyAuthError(err);
@@ -997,7 +998,7 @@
       } else {
         await addQuote(quoteData(text, by, note));
         resetForm();
-        $('f-hint').textContent = 'Saved.';
+        $('f-hint').textContent = "That's going in the quote book.";
         setTimeout(() => { if (!editingId) $('f-hint').textContent = ''; }, 2000);
       }
     } catch (err) {

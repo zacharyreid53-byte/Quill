@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quill</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHBhdGggZD0iTTI3IDNDMjAgMyAxMCA5IDYgMTdDMyAyMyAzIDI3IDQgMjhDNSAyNyA4IDI0IDExIDIwQzE2IDEzIDI0IDggMjcgM1oiIGZpbGw9IiNFOEE5M0MiLz48L3N2Zz4=">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNCAzNCI+PHBhdGggZD0iTTI4IDNMMjMgN0wyNSA4TDE4IDEzTDIwIDE0TDEzIDE4TDEwIDIxQzYgMTYgOSA4IDI4IDNaIiBmaWxsPSIjMjYyMjFDIi8+PHBhdGggZD0iTTkgMjJMNCAyOC41TDMgMzBMNSAyNy41TDEwIDIyLjVaIiBmaWxsPSIjMjYyMjFDIi8+PGNpcmNsZSBjeD0iMyIgY3k9IjMwIiByPSIxLjYiIGZpbGw9IiNFOEE5M0MiLz48L3N2Zz4=">
 </head>
 <body>
 <style>
@@ -324,13 +324,11 @@
   <header>
     <div>
       <div class="logo-row">
-        <svg class="feather" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M27 3C20 3 10 9 6 17C3 23 3 27 4 28C5 27 8 24 11 20C16 13 24 8 27 3Z" />
-          <path class="spine" d="M25 5 L4 27" />
-          <path class="barb" d="M20 9 L15 11" />
-          <path class="barb" d="M16 14 L11 16" />
-          <path class="barb" d="M12 18 L8 20" />
-          <circle class="nib-dot" cx="4" cy="27.5" r="1.5" />
+        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
+          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
+          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
+          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
         </svg>
         <h1 class="wordmark">Quill<span class="nib">.</span></h1>
       </div>
@@ -377,13 +375,11 @@
   <header>
     <div>
       <div class="logo-row">
-        <svg class="feather" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M27 3C20 3 10 9 6 17C3 23 3 27 4 28C5 27 8 24 11 20C16 13 24 8 27 3Z" />
-          <path class="spine" d="M25 5 L4 27" />
-          <path class="barb" d="M20 9 L15 11" />
-          <path class="barb" d="M16 14 L11 16" />
-          <path class="barb" d="M12 18 L8 20" />
-          <circle class="nib-dot" cx="4" cy="27.5" r="1.5" />
+        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
+          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
+          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
+          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
         </svg>
         <h1 class="wordmark">Quill<span class="nib">.</span></h1>
       </div>
@@ -1097,7 +1093,7 @@
       saveQuotes();
       renderList();
       if (first) showRandom();
-      $('f-hint').textContent = 'Saved.';
+      $('f-hint').textContent = "That's going in the quote book.";
       setTimeout(function () { if (!editingId) $('f-hint').textContent = ''; }, 2000);
     }
   });
