@@ -14,6 +14,13 @@
           "$qid": {
             ".write": "auth != null && (auth.uid === $uid || (!data.exists() && newData.exists() && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length < 2000))"
           }
+        },
+        "collections": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid",
+          "$cid": {
+            ".validate": "newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 60"
+          }
         }
       }
     }

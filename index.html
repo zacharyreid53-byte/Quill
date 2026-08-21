@@ -88,6 +88,45 @@
   .wrap[hidden] { display: none; }
 
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+  .header-left { display: flex; align-items: center; gap: 0.75rem; }
+
+  #drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 20;
+  }
+  #drawer-overlay[hidden] { display: none; }
+  #nav-drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 15rem;
+    max-width: 80vw;
+    background: var(--card);
+    border-right: 1px solid var(--line);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+    z-index: 21;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1.5rem 1rem;
+  }
+  #nav-drawer[hidden] { display: none; }
+  .drawer-link {
+    text-align: left;
+    border: none;
+    background: none;
+    padding: 0.65rem 0.75rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .drawer-link:hover { background: var(--paper); }
+  .drawer-link[aria-current="page"] { color: var(--ink); background: var(--paper); }
   .logo-row { display: flex; align-items: flex-end; gap: 0.1rem; }
   .feather { width: 1.9rem; height: 1.9rem; flex-shrink: 0; margin-bottom: -0.05rem; }
   .feather .quill-body { fill: var(--ink); }
@@ -247,7 +286,7 @@
     gap: 0.75rem;
   }
   label { font-size: 0.85rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 0.3rem; }
-  input:not([type="radio"]):not([type="checkbox"]), textarea {
+  input:not([type="radio"]):not([type="checkbox"]), textarea, select {
     font: inherit;
     color: var(--ink);
     background: var(--paper);
@@ -338,6 +377,44 @@
   ul.quotes .meta .spacer { flex: 1; }
   ul.quotes .meta .hint { font-size: 0.75rem; }
   ul.quotes .note { margin: 0.3rem 0 0; font-size: 0.85rem; font-style: italic; color: var(--ink-soft); }
+
+  ul.collections { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  ul.collections li {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  ul.collections .col-name {
+    flex: 1;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink);
+    padding: 0;
+  }
+  ul.collections .col-count { font-size: 0.8rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+  .collection-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    padding: 0.6rem 0.8rem;
+    background: var(--card);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  .collection-filter[hidden] { display: none; }
+  .collection-filter .label { flex: 1; color: var(--ink-soft); }
+  .collection-filter .label strong { color: var(--ink); }
 
   .actions {
     margin-top: 0.75rem;
@@ -463,7 +540,8 @@
 <!-- ============ App page (#/app) ============ -->
 <div class="wrap" id="app-view" hidden>
   <header>
-    <div>
+    <div class="header-left">
+      <button class="icon-btn nav-toggle-btn" id="nav-toggle" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded="false">&#9776;</button>
       <div class="logo-row">
         <h1 class="wordmark">Quill</h1>
         <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
@@ -488,6 +566,10 @@
 
   <section>
     <h2>The collection</h2>
+    <div class="collection-filter" id="collection-filter" hidden>
+      <span class="label">Showing: <strong id="collection-filter-name"></strong></span>
+      <button type="button" class="quiet" id="collection-filter-clear">Show all quotes</button>
+    </div>
     <div class="list-tools">
       <input id="search" type="search" placeholder="Search quotes or people&hellip;" aria-label="Search quotes">
       <button class="chip" id="fav-filter" type="button" aria-pressed="false">&#9733; Favorites</button>
@@ -512,6 +594,11 @@
         <label>Context <span style="text-transform:none; letter-spacing:0;">(optional)</span>
           <input id="f-note" placeholder="Thanksgiving 2019, after the turkey incident">
         </label>
+        <label>Collection <span style="text-transform:none; letter-spacing:0;">(optional)</span>
+          <select id="f-collection">
+            <option value="">No collection</option>
+          </select>
+        </label>
         <div class="form-actions">
           <button class="primary" type="submit" id="f-submit">Save quote</button>
           <button type="button" id="f-cancel">Cancel</button>
@@ -527,7 +614,8 @@
 <!-- ============ Backup & import page (#/import) ============ -->
 <div class="wrap" id="import-view" hidden>
   <header>
-    <div>
+    <div class="header-left">
+      <button class="icon-btn nav-toggle-btn" id="nav-toggle-import" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded="false">&#9776;</button>
       <div class="logo-row">
         <h1 class="wordmark">Quill</h1>
         <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
@@ -580,6 +668,48 @@
   </section>
 </div>
 
+<!-- ============ Collections page (#/collections) ============ -->
+<div class="wrap" id="collections-view" hidden>
+  <header>
+    <div class="header-left">
+      <button class="icon-btn nav-toggle-btn" id="nav-toggle-collections" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded="false">&#9776;</button>
+      <div class="logo-row">
+        <h1 class="wordmark">Quill</h1>
+        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
+          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 21L3 29L5 22Z" />
+          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <h2>New collection</h2>
+    <form class="add" id="collection-form">
+      <label>Name
+        <input id="collection-name" required maxlength="60" placeholder="Family reunions, Road trips, Kid quotes&hellip;">
+      </label>
+      <div class="form-actions">
+        <button class="primary" type="submit" id="collection-submit">Create collection</button>
+        <p class="form-error" id="collection-error"></p>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>Your collections</h2>
+    <ul class="collections" id="collection-list"></ul>
+    <div class="empty" id="collections-empty" hidden>No collections yet — create one above, then assign quotes to it from the Quotes tab.</div>
+  </section>
+</div>
+
+<div id="drawer-overlay" hidden></div>
+<nav id="nav-drawer" hidden aria-label="Main navigation">
+  <button type="button" class="drawer-link" id="drawer-quotes" aria-current="page">Quotes</button>
+  <button type="button" class="drawer-link" id="drawer-collections">Collections</button>
+</nav>
+
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
   import {
@@ -607,6 +737,9 @@
   let family = [];        /* other users: {uid, name} */
   let quotes = [];        /* my quotes, live from Firestore */
   let unsubscribe = null; /* Firestore listener */
+  let unsubscribeCollections = null;
+  let collections = [];
+  let activeCollectionId = null;
   let editingId = null;
   let openId = null;
   let favOnly = false;
@@ -620,6 +753,9 @@
     $('login-view').hidden = name !== 'login';
     $('app-view').hidden = name !== 'app';
     $('import-view').hidden = name !== 'import';
+    $('collections-view').hidden = name !== 'collections';
+    $('drawer-quotes').setAttribute('aria-current', name === 'app' ? 'page' : 'false');
+    $('drawer-collections').setAttribute('aria-current', name === 'collections' ? 'page' : 'false');
   }
 
   function route() {
@@ -630,6 +766,9 @@
     } else if (location.hash === '#/import') {
       if (me) showPage('import');
       else location.replace('#/login');
+    } else if (location.hash === '#/collections') {
+      if (me) showPage('collections');
+      else location.replace('#/login');
     } else {
       if (location.hash !== '#/login') {
         try { history.replaceState(null, '', '#/login'); } catch (e) { location.hash = '#/login'; }
@@ -638,6 +777,140 @@
     }
   }
   window.addEventListener('hashchange', route);
+
+  /* ---- Side drawer ---- */
+  function openDrawer() {
+    $('drawer-overlay').hidden = false;
+    $('nav-drawer').hidden = false;
+    document.querySelectorAll('.nav-toggle-btn').forEach((b) => b.setAttribute('aria-expanded', 'true'));
+  }
+  function closeDrawer() {
+    $('drawer-overlay').hidden = true;
+    $('nav-drawer').hidden = true;
+    document.querySelectorAll('.nav-toggle-btn').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+  }
+  document.querySelectorAll('.nav-toggle-btn').forEach((b) => b.addEventListener('click', openDrawer));
+  $('drawer-overlay').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+  $('drawer-quotes').addEventListener('click', () => {
+    closeDrawer();
+    setActiveCollection(null);
+    location.hash = '#/app';
+  });
+  $('drawer-collections').addEventListener('click', () => {
+    closeDrawer();
+    location.hash = '#/collections';
+  });
+
+  /* ---- Collections ---- */
+  function setActiveCollection(id) {
+    activeCollectionId = id;
+    const col = id ? collections.find((c) => c.id === id) : null;
+    $('collection-filter').hidden = !col;
+    if (col) $('collection-filter-name').textContent = col.name;
+    renderList();
+  }
+  $('collection-filter-clear').addEventListener('click', () => setActiveCollection(null));
+
+  function populateCollectionSelect() {
+    const sel = $('f-collection');
+    const prevValue = sel.value;
+    sel.textContent = '';
+    const noneOpt = document.createElement('option');
+    noneOpt.value = '';
+    noneOpt.textContent = 'No collection';
+    sel.appendChild(noneOpt);
+    collections.forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      sel.appendChild(opt);
+    });
+    if (collections.some((c) => c.id === prevValue) || prevValue === '') sel.value = prevValue;
+  }
+
+  function renderCollectionsList() {
+    const list = $('collection-list');
+    list.textContent = '';
+    $('collections-empty').hidden = collections.length > 0;
+
+    collections.forEach((c) => {
+      const li = document.createElement('li');
+      const count = quotes.filter((q) => q.collectionId === c.id).length;
+
+      const nameBtn = document.createElement('button');
+      nameBtn.type = 'button';
+      nameBtn.className = 'col-name';
+      nameBtn.textContent = c.name;
+      nameBtn.addEventListener('click', () => {
+        setActiveCollection(c.id);
+        location.hash = '#/app';
+      });
+      li.appendChild(nameBtn);
+
+      const countSpan = document.createElement('span');
+      countSpan.className = 'col-count';
+      countSpan.textContent = count === 1 ? '1 quote' : count + ' quotes';
+      li.appendChild(countSpan);
+
+      const renameBtn = document.createElement('button');
+      renameBtn.type = 'button';
+      renameBtn.className = 'quiet';
+      renameBtn.textContent = 'Rename';
+      renameBtn.addEventListener('click', async () => {
+        const name = prompt('Rename collection', c.name);
+        if (!name || !name.trim() || name.trim() === c.name) return;
+        try {
+          await update(ref(db, 'users/' + me.uid + '/collections/' + c.id), { name: name.trim() });
+        } catch (e) {
+          alert('Couldn’t rename — check your connection.');
+        }
+      });
+      li.appendChild(renameBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'quiet danger';
+      delBtn.textContent = 'Delete';
+      delBtn.addEventListener('click', async () => {
+        if (!confirm('Delete “' + c.name + '”? Quotes in it aren’t deleted — they just lose this collection.')) return;
+        try {
+          const affected = quotes.filter((q) => q.collectionId === c.id);
+          for (const q of affected) {
+            await update(ref(db, 'users/' + me.uid + '/quotes/' + q.id), { collectionId: '' });
+          }
+          await remove(ref(db, 'users/' + me.uid + '/collections/' + c.id));
+          if (activeCollectionId === c.id) setActiveCollection(null);
+        } catch (e) {
+          alert('Couldn’t delete — check your connection.');
+        }
+      });
+      li.appendChild(delBtn);
+
+      list.appendChild(li);
+    });
+  }
+
+  $('collection-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('collection-name').value.trim();
+    const err = $('collection-error');
+    err.textContent = '';
+    if (!name) { err.textContent = 'Give the collection a name.'; return; }
+    if (collections.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+      err.textContent = 'You already have a collection called “' + name + '”.';
+      return;
+    }
+    $('collection-submit').disabled = true;
+    try {
+      await push(ref(db, 'users/' + me.uid + '/collections'), { name, created: new Date().toISOString() });
+      $('collection-form').reset();
+    } catch (e) {
+      err.textContent = 'Couldn’t create it — check your connection.';
+    } finally {
+      $('collection-submit').disabled = false;
+    }
+  });
 
   const USERNAME_DOMAIN = '@users.quill.app';
 
@@ -668,10 +941,12 @@
   onAuthStateChanged(auth, async (user) => {
     authReady = true;
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    if (unsubscribeCollections) { unsubscribeCollections(); unsubscribeCollections = null; }
 
     if (!user) {
       me = null;
       quotes = [];
+      collections = [];
       family = [];
       route();
       return;
@@ -694,11 +969,25 @@
         .filter((q) => q && typeof q.text === 'string' && q.text);
       renderList();
     }, (err) => {
-      $('backup-status').textContent = 'Lost the connection to your collection (' + (err.message || 'unknown') + ') — reload the page.';
+      alert('Lost the connection to your collection (' + (err.message || 'unknown') + ') — reload the page.');
+    });
+
+    unsubscribeCollections = onValue(ref(db, 'users/' + me.uid + '/collections'), (snap) => {
+      const val = snap.val() || {};
+      collections = Object.keys(val).map((id) => ({ id, ...val[id] }))
+        .filter((c) => c && typeof c.name === 'string' && c.name);
+      collections.sort((a, b) => a.name.localeCompare(b.name));
+      if (activeCollectionId && !collections.some((c) => c.id === activeCollectionId)) {
+        setActiveCollection(null);
+      }
+      populateCollectionSelect();
+      renderCollectionsList();
     });
 
     openId = null;
     favOnly = false;
+    activeCollectionId = null;
+    $('collection-filter').hidden = true;
     $('fav-filter').setAttribute('aria-pressed', 'false');
     selectMode = false;
     selectedIds = new Set();
@@ -707,6 +996,7 @@
     resetForm();
     closeAddSection();
     closeAccountMenu();
+    closeDrawer();
     $('search').value = '';
     $('backup-box').value = '';
     $('backup-status').textContent = '';
@@ -815,8 +1105,8 @@
   });
 
   /* ---- Quote CRUD ---- */
-  function quoteData(text, by, note) {
-    return { text, by, note, added: new Date().toISOString(), fav: false, sharedBy: '' };
+  function quoteData(text, by, note, collectionId) {
+    return { text, by, note, collectionId: collectionId || '', added: new Date().toISOString(), fav: false, sharedBy: '' };
   }
 
   async function addQuote(data) {
@@ -894,7 +1184,7 @@
     try {
       await update(ref(db, 'users/' + me.uid + '/quotes/' + id), { fav: !q.fav });
     } catch (e) {
-      $('backup-status').textContent = 'Couldn’t update the favorite — check your connection.';
+      alert('Couldn’t update the favorite — check your connection.');
     }
   }
 
@@ -926,6 +1216,7 @@
 
     const shown = quotes.filter((q) => {
       if (favOnly && !q.fav) return false;
+      if (activeCollectionId && q.collectionId !== activeCollectionId) return false;
       return matchesSearch(q, query);
     });
     shown.sort((a, b) => (b.added || '').localeCompare(a.added || ''));
@@ -934,6 +1225,8 @@
     if (shown.length === 0) {
       if (quotes.length === 0) {
         empty.textContent = 'No quotes yet. The best ones are the throwaway lines — write them down before they fade.';
+      } else if (activeCollectionId && !query && !favOnly) {
+        empty.textContent = 'No quotes in this collection yet — add one, or assign an existing quote to it from Edit.';
       } else if (favOnly && !query) {
         empty.textContent = 'No favorites yet — open a quote and press the star.';
       } else {
@@ -1128,6 +1421,7 @@
     const query = $('search').value.trim().toLowerCase();
     return quotes.filter((q) => {
       if (favOnly && !q.fav) return false;
+      if (activeCollectionId && q.collectionId !== activeCollectionId) return false;
       return matchesSearch(q, query);
     });
   }
@@ -1186,6 +1480,7 @@
     editingId = null;
     $('add-form').reset();
     $('f-note').placeholder = NOTE_PLACEHOLDER;
+    $('f-collection').value = activeCollectionId || '';
     $('form-title').textContent = 'Add a quote';
     $('f-submit').textContent = 'Save quote';
     $('f-hint').textContent = '';
@@ -1199,6 +1494,7 @@
     $('f-by').value = q.by || '';
     $('f-note').value = q.note || '';
     $('f-note').placeholder = '';
+    $('f-collection').value = q.collectionId || '';
     $('form-title').textContent = 'Edit quote';
     $('f-submit').textContent = 'Save changes';
     openAddSection();
@@ -1215,7 +1511,7 @@
     try {
       await remove(ref(db, 'users/' + me.uid + '/quotes/' + id));
     } catch (e) {
-      $('backup-status').textContent = 'Couldn’t delete — check your connection.';
+      alert('Couldn’t delete — check your connection.');
     }
   }
 
@@ -1224,16 +1520,17 @@
     const text = $('f-text').value.trim();
     const by = $('f-by').value.trim();
     const note = $('f-note').value.trim();
+    const collectionId = $('f-collection').value;
     if (!text || !by) return;
     $('f-submit').disabled = true;
 
     try {
       if (editingId) {
-        await update(ref(db, 'users/' + me.uid + '/quotes/' + editingId), { text, by, note });
+        await update(ref(db, 'users/' + me.uid + '/quotes/' + editingId), { text, by, note, collectionId });
         resetForm();
         closeAddSection();
       } else {
-        await addQuote(quoteData(text, by, note));
+        await addQuote(quoteData(text, by, note, collectionId));
         resetForm();
         $('f-hint').textContent = "That's going in the quote book.";
         setTimeout(() => { if (!editingId) $('f-hint').textContent = ''; }, 2000);
@@ -1252,7 +1549,7 @@
   /* ---- Bulk copy / paste ---- */
   $('backup-copy').addEventListener('click', () => {
     const payload = JSON.stringify(
-      quotes.map(({ text, by, note, added, fav, sharedBy }) => ({ text, by, note, added, fav, sharedBy })),
+      quotes.map(({ text, by, note, added, fav, sharedBy, collectionId }) => ({ text, by, note, added, fav, sharedBy, collectionId })),
       null, 2
     );
     $('backup-box').value = payload;
@@ -1366,7 +1663,8 @@
           note: typeof inQ.note === 'string' ? inQ.note : '',
           added: typeof inQ.added === 'string' ? inQ.added : new Date().toISOString(),
           fav: !!inQ.fav,
-          sharedBy: typeof inQ.sharedBy === 'string' ? inQ.sharedBy : ''
+          sharedBy: typeof inQ.sharedBy === 'string' ? inQ.sharedBy : '',
+          collectionId: typeof inQ.collectionId === 'string' ? inQ.collectionId : ''
         });
         added++;
       } catch (e) { failed++; }
