@@ -108,7 +108,6 @@
     align-items: flex-end;
     gap: 0.15rem;
   }
-  .whoami .name { color: var(--ink); font-weight: 600; }
   .count {
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size: 0.8rem;
@@ -116,6 +115,59 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
+
+  .account { position: relative; }
+  .avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: none;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+  }
+  .account-menu {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    right: 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 11rem;
+    z-index: 10;
+    text-align: left;
+  }
+  .account-menu[hidden] { display: none; }
+  .account-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0.2rem 0.6rem 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .account-menu button {
+    border: none;
+    background: none;
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .account-menu button:hover { background: var(--paper); }
 
   /* Boot / connecting screen card */
   .hero {
@@ -210,6 +262,17 @@
 
   .list-tools { display: flex; gap: 0.6rem; margin-bottom: 1rem; align-items: center; }
   .list-tools input { flex: 1; }
+  button.icon-btn {
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
   button.chip {
     font-size: 0.85rem;
     padding: 0.45rem 0.8rem;
@@ -387,14 +450,25 @@
       </div>
     </div>
     <div class="whoami">
-      <span class="name" id="whoami-name"></span>
       <span class="count" id="count"></span>
-      <button class="quiet" id="signout" type="button">Sign out</button>
+      <div class="account">
+        <button class="avatar" id="account-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Account menu"></button>
+        <div class="account-menu" id="account-menu" hidden>
+          <p class="account-name" id="account-name"></p>
+          <button type="button" id="menu-import">Bulk import &amp; export</button>
+          <button type="button" id="menu-signout">Sign out</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <section>
-    <button class="primary" type="button" id="add-quote-toggle">+ Add a quote</button>
+    <h2>The collection</h2>
+    <div class="list-tools">
+      <input id="search" type="search" placeholder="Search quotes or people&hellip;" aria-label="Search quotes">
+      <button class="chip" id="fav-filter" type="button" aria-pressed="false">&#9733; Favorites</button>
+      <button class="primary icon-btn" id="add-quote-toggle" type="button" aria-label="Add a quote">+</button>
+    </div>
     <div id="add-section" hidden>
       <h2 id="form-title">Add a quote</h2>
       <form class="add" id="add-form">
@@ -414,19 +488,11 @@
         </div>
       </form>
     </div>
-  </section>
-
-  <section>
-    <h2>The collection</h2>
-    <div class="list-tools">
-      <input id="search" type="search" placeholder="Search quotes or people&hellip;" aria-label="Search quotes">
-      <button class="chip" id="fav-filter" type="button" aria-pressed="false">&#9733; Favorites</button>
-    </div>
     <ul class="quotes" id="list"></ul>
     <div class="empty" id="empty" hidden></div>
   </section>
 
-  <details class="backup">
+  <details class="backup" id="backup-details">
     <summary>Backup &amp; import</summary>
     <div class="inner">
       <p class="form-hint">Everything saves to your account automatically and follows you to any device — no backups needed. This box is for getting quotes in and out in bulk: copy your collection as text, or paste quotes to add them.</p>
@@ -542,7 +608,7 @@
     }
 
     me = { uid: user.uid, name: user.displayName || emailToUsername(user.email) };
-    $('whoami-name').textContent = me.name;
+    setAccountName(me.name);
 
     /* Keep the family directory entry fresh so others can share with us. */
     try {
@@ -566,6 +632,7 @@
     $('fav-filter').setAttribute('aria-pressed', 'false');
     resetForm();
     closeAddSection();
+    closeAccountMenu();
     $('search').value = '';
     $('backup-box').value = '';
     $('backup-status').textContent = '';
@@ -629,7 +696,7 @@
       await updateProfile(cred.user, { displayName: rawUsername });
       await set(ref(db, 'directory/' + cred.user.uid), { name: rawUsername });
       me = { uid: cred.user.uid, name: rawUsername };
-      $('whoami-name').textContent = rawUsername;
+      setAccountName(rawUsername);
       $('signup-form').reset();
     } catch (err) {
       $('su-error').textContent = friendlyAuthError(err);
@@ -638,7 +705,38 @@
     }
   });
 
-  $('signout').addEventListener('click', () => { signOut(auth); });
+  function setAccountName(name) {
+    const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
+    $('account-toggle').textContent = initial;
+    $('account-name').textContent = name;
+  }
+
+  function closeAccountMenu() {
+    $('account-menu').hidden = true;
+    $('account-toggle').setAttribute('aria-expanded', 'false');
+  }
+
+  $('account-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = $('account-menu').hidden;
+    $('account-menu').hidden = !willOpen;
+    $('account-toggle').setAttribute('aria-expanded', String(willOpen));
+  });
+  document.addEventListener('click', (e) => {
+    if (!$('account-menu').hidden && !e.target.closest('.account')) closeAccountMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAccountMenu();
+  });
+  $('menu-signout').addEventListener('click', () => {
+    closeAccountMenu();
+    signOut(auth);
+  });
+  $('menu-import').addEventListener('click', () => {
+    closeAccountMenu();
+    $('backup-details').open = true;
+    $('backup-details').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   /* ---- Quote CRUD ---- */
   function quoteData(text, by, note) {
