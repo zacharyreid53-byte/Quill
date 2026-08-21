@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quill</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNCAzNCI+PHBhdGggZD0iTTI4IDNDMjQgNiAyNiAxNCA5IDIxQzYgMTYgOSA4IDI4IDNaIiBmaWxsPSIjMjYyMjFDIi8+PHBhdGggZD0iTTkgMjFMMyAyOUw1IDIyWiIgZmlsbD0iIzI2MjIxQyIvPjxjaXJjbGUgY3g9IjMuNSIgY3k9IjI4LjUiIHI9IjEuNyIgZmlsbD0iI0U4QTkzQyIvPjwvc3ZnPg==">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjE2IDAgNTAgMTIyIj48cGF0aCBkPSJNNTEgNCBMNTAuMTYgMy41NiBRNTAuMTYgMy41NiA0Ny42MyA2LjM3IFE0NS4wOSA5LjE3IDQxLjQyIDExLjUxIFEzNy43NiAxMy44NSAzNi43MiAxNy4zMiBRMzUuNjkgMjAuNzkgMzEuNzIgMjMuMjIgUTI3Ljc1IDI1LjY2IDI4LjI2IDI5LjU1IFEyOC43NyAzMy40NCAyNS4wOSAzNi4yMSBRMjEuNDAgMzguOTcgMjMuMjMgNDIuOTMgUTI1LjA2IDQ2LjkwIDIyLjI5IDUwLjA0IFExOS41MiA1My4xOCAyMi4xOSA1Ni44OSBRMjQuODYgNjAuNjEgMjMuNTIgNjMuOTUgUTIyLjE3IDY3LjMwIDI1LjA1IDcwLjYwIFEyNy45MyA3My44OSAyOC4yNyA3Ny4xMyBRMjguNjAgODAuMzcgMzAuMTcgODMuNDMgTDMxLjc1IDg2LjQ5IFEyNCA5NiAyOSAxMDYgTDM3LjIwIDg1LjY3IFEzNy4yMCA4NS42NyAzNy42MyA4Mi41NyBRMzguMDcgNzkuNDcgMzcuOTMgNzYuNDcgUTM3LjgwIDczLjQ4IDM5LjY3IDcwLjUwIFE0MS41NSA2Ny41MiA0MC44MyA2NC41NiBRNDAuMTIgNjEuNTkgNDIuNDEgNTguODYgUTQ0LjY5IDU2LjEyIDQzLjU3IDUyLjk4IFE0Mi40NSA0OS44NCA0NC43MiA0Ny4yMyBRNDYuOTkgNDQuNjMgNDUuODAgNDEuMTkgUTQ0LjYyIDM3Ljc1IDQ2LjU1IDM1LjA2IFE0OC40OSAzMi4zNyA0Ny42NiAyOC42NiBRNDYuODQgMjQuOTYgNDguMjggMjEuOTQgUTQ5LjczIDE4LjkzIDQ5LjY3IDE1LjEyIFE0OS42MCAxMS4zMSA1MC41OSA3LjgxIEw1MS41NyA0LjMwIFoiIGZpbGw9IiMyNjIyMUMiLz48cGF0aCBkPSJNMzQgMTEzIEMzOSAxMDcgNDEgMTE4IDQ3IDExMiBDNTMgMTA2IDU1IDExNyA2MiAxMTEiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzI2MjIxQyIgc3Ryb2tlLXdpZHRoPSIyLjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==">
 </head>
 <body>
 <style>
@@ -64,9 +64,9 @@
 
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
   .logo-row { display: flex; align-items: flex-end; gap: 0.1rem; }
-  .feather { width: 1.7rem; height: 1.7rem; flex-shrink: 0; margin-bottom: -0.05rem; }
+  .feather { width: 0.95rem; height: 2.3rem; flex-shrink: 0; margin-bottom: 0; }
   .feather .quill-body { fill: var(--ink); }
-  .feather .nib-dot { fill: var(--mark); }
+  .feather .quill-squiggle { fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
   .wordmark {
     font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     font-size: 1.6rem;
@@ -316,10 +316,9 @@
     <div>
       <div class="logo-row">
         <h1 class="wordmark">Quill</h1>
-        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
-          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
-          <path class="quill-body" d="M9 21L3 29L5 22Z" />
-          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
+        <svg class="feather" viewBox="16 0 50 122" aria-hidden="true">
+          <path class="quill-body" d="M51 4 L50.16 3.56 Q50.16 3.56 47.63 6.37 Q45.09 9.17 41.42 11.51 Q37.76 13.85 36.72 17.32 Q35.69 20.79 31.72 23.22 Q27.75 25.66 28.26 29.55 Q28.77 33.44 25.09 36.21 Q21.40 38.97 23.23 42.93 Q25.06 46.90 22.29 50.04 Q19.52 53.18 22.19 56.89 Q24.86 60.61 23.52 63.95 Q22.17 67.30 25.05 70.60 Q27.93 73.89 28.27 77.13 Q28.60 80.37 30.17 83.43 L31.75 86.49 Q24 96 29 106 L37.20 85.67 Q37.20 85.67 37.63 82.57 Q38.07 79.47 37.93 76.47 Q37.80 73.48 39.67 70.50 Q41.55 67.52 40.83 64.56 Q40.12 61.59 42.41 58.86 Q44.69 56.12 43.57 52.98 Q42.45 49.84 44.72 47.23 Q46.99 44.63 45.80 41.19 Q44.62 37.75 46.55 35.06 Q48.49 32.37 47.66 28.66 Q46.84 24.96 48.28 21.94 Q49.73 18.93 49.67 15.12 Q49.60 11.31 50.59 7.81 L51.57 4.30 Z" />
+          <path class="quill-squiggle" d="M34 113 C39 107 41 118 47 112 C53 106 55 117 62 111" />
         </svg>
       </div>
       <p class="tagline">The funny things they said.</p>
@@ -366,10 +365,9 @@
     <div>
       <div class="logo-row">
         <h1 class="wordmark">Quill</h1>
-        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
-          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
-          <path class="quill-body" d="M9 21L3 29L5 22Z" />
-          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
+        <svg class="feather" viewBox="16 0 50 122" aria-hidden="true">
+          <path class="quill-body" d="M51 4 L50.16 3.56 Q50.16 3.56 47.63 6.37 Q45.09 9.17 41.42 11.51 Q37.76 13.85 36.72 17.32 Q35.69 20.79 31.72 23.22 Q27.75 25.66 28.26 29.55 Q28.77 33.44 25.09 36.21 Q21.40 38.97 23.23 42.93 Q25.06 46.90 22.29 50.04 Q19.52 53.18 22.19 56.89 Q24.86 60.61 23.52 63.95 Q22.17 67.30 25.05 70.60 Q27.93 73.89 28.27 77.13 Q28.60 80.37 30.17 83.43 L31.75 86.49 Q24 96 29 106 L37.20 85.67 Q37.20 85.67 37.63 82.57 Q38.07 79.47 37.93 76.47 Q37.80 73.48 39.67 70.50 Q41.55 67.52 40.83 64.56 Q40.12 61.59 42.41 58.86 Q44.69 56.12 43.57 52.98 Q42.45 49.84 44.72 47.23 Q46.99 44.63 45.80 41.19 Q44.62 37.75 46.55 35.06 Q48.49 32.37 47.66 28.66 Q46.84 24.96 48.28 21.94 Q49.73 18.93 49.67 15.12 Q49.60 11.31 50.59 7.81 L51.57 4.30 Z" />
+          <path class="quill-squiggle" d="M34 113 C39 107 41 118 47 112 C53 106 55 117 62 111" />
         </svg>
       </div>
       <p class="tagline">The funny things they said.</p>
