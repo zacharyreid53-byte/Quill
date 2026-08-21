@@ -4,7 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quill</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNCAzNCI+PHBhdGggZD0iTTI4IDNMMjMgN0wyNSA4TDE4IDEzTDIwIDE0TDEzIDE4TDEwIDIxQzYgMTYgOSA4IDI4IDNaIiBmaWxsPSIjMjYyMjFDIi8+PHBhdGggZD0iTTkgMjJMNCAyOC41TDMgMzBMNSAyNy41TDEwIDIyLjVaIiBmaWxsPSIjMjYyMjFDIi8+PGNpcmNsZSBjeD0iMyIgY3k9IjMwIiByPSIxLjYiIGZpbGw9IiNFOEE5M0MiLz48L3N2Zz4=">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNCAzNCI+PHBhdGggZD0iTTI4IDNDMjQgNiAyNiAxNCA5IDIxQzYgMTYgOSA4IDI4IDNaIiBmaWxsPSIjMjYyMjFDIi8+PHBhdGggZD0iTTkgMjFMMyAyOUw1IDIyWiIgZmlsbD0iIzI2MjIxQyIvPjxjaXJjbGUgY3g9IjMuNSIgY3k9IjI4LjUiIHI9IjEuNyIgZmlsbD0iI0U4QTkzQyIvPjwvc3ZnPg==">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#FDF9F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1F1C16" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Quill">
 <script>
   /* ============================================================
      Your Firebase web app config goes here.
@@ -84,13 +92,6 @@
   .feather { width: 1.9rem; height: 1.9rem; flex-shrink: 0; margin-bottom: -0.05rem; }
   .feather .quill-body { fill: var(--ink); }
   .feather .nib-dot { fill: var(--mark); }
-  .feather .flourish {
-    fill: none;
-    stroke: var(--ink);
-    stroke-width: 1;
-    stroke-linecap: round;
-    opacity: 0.55;
-  }
   .wordmark {
     font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     font-size: 1.6rem;
@@ -353,10 +354,16 @@
 
   .panel[hidden] { display: none; }
 
-  details.backup { border-top: 1px solid var(--line); padding-top: 1.25rem; }
-  details summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); }
-  details .inner { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
-  details.backup textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.75rem; min-height: 6rem; }
+  #import-view section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  #import-view textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.75rem; min-height: 6rem; }
   .backup-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
   #import-options { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
   .option-group { display: flex; flex-direction: column; gap: 0.35rem; margin: 0.4rem 0 0.9rem; }
@@ -372,10 +379,9 @@
       <div class="logo-row">
         <h1 class="wordmark">Quill</h1>
         <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
-          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
-          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
-          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
-          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
+          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 21L3 29L5 22Z" />
+          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
         </svg>
       </div>
       <p class="tagline">The funny things they said.</p>
@@ -394,10 +400,9 @@
       <div class="logo-row">
         <h1 class="wordmark">Quill</h1>
         <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
-          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
-          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
-          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
-          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
+          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 21L3 29L5 22Z" />
+          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
         </svg>
       </div>
       <p class="tagline">The funny things they said.</p>
@@ -445,10 +450,9 @@
       <div class="logo-row">
         <h1 class="wordmark">Quill</h1>
         <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
-          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
-          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
-          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
-          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
+          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 21L3 29L5 22Z" />
+          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
         </svg>
       </div>
     </div>
@@ -494,47 +498,62 @@
     <ul class="quotes" id="list"></ul>
     <div class="empty" id="empty" hidden></div>
   </section>
+</div>
 
-  <details class="backup" id="backup-details">
-    <summary>Backup &amp; import</summary>
-    <div class="inner">
-      <p class="form-hint">Everything saves to your account automatically and follows you to any device — no backups needed. This box is for getting quotes in and out in bulk: copy your collection as text, or paste quotes to add them.</p>
-      <div id="local-import" hidden>
-        <p class="form-hint" id="local-import-label"></p>
-        <div class="backup-actions" id="local-import-buttons"></div>
+<!-- ============ Backup & import page (#/import) ============ -->
+<div class="wrap" id="import-view" hidden>
+  <header>
+    <div>
+      <div class="logo-row">
+        <h1 class="wordmark">Quill</h1>
+        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
+          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 21L3 29L5 22Z" />
+          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
+        </svg>
       </div>
-      <textarea id="backup-box" aria-label="Backup data" placeholder='Paste quotes here, then press "Add these quotes"'></textarea>
-      <div class="backup-actions">
-        <button type="button" id="backup-copy">Copy my collection</button>
-        <button type="button" id="backup-load">Add these quotes</button>
-      </div>
-
-      <div id="import-options" hidden>
-        <p class="form-hint">Where should these go?</p>
-        <div class="option-group" role="radiogroup" aria-label="Position">
-          <label><input type="radio" name="import-position" value="top" checked> Top (most recent)</label>
-          <label><input type="radio" name="import-position" value="bottom"> Bottom (oldest)</label>
-        </div>
-        <p class="form-hint">How should they be ordered?</p>
-        <div class="option-group" role="radiogroup" aria-label="Order">
-          <label><input type="radio" name="import-order" value="own" checked> Each quote's own date, if it has one</label>
-          <label><input type="radio" name="import-order" value="listed"> The order they're listed in the paste</label>
-        </div>
-        <div class="backup-actions">
-          <button class="primary" type="button" id="import-confirm">Add quotes</button>
-          <button type="button" id="import-cancel">Cancel</button>
-        </div>
-      </div>
-
-      <p class="status" id="backup-status"></p>
-
-      <p class="form-hint">If quotes show garbled characters like <code>â€™</code> instead of an apostrophe (usually from pasting through a text editor that misread the encoding), this fixes them in place.</p>
-      <div class="backup-actions">
-        <button type="button" id="fix-mojibake">Fix garbled text</button>
-      </div>
-      <p class="status" id="mojibake-status"></p>
     </div>
-  </details>
+    <button class="quiet" id="import-back" type="button">&larr; Back</button>
+  </header>
+
+  <section>
+    <h2>Backup &amp; import</h2>
+    <p class="form-hint">Everything saves to your account automatically and follows you to any device — no backups needed. This box is for getting quotes in and out in bulk: copy your collection as text, or paste quotes to add them.</p>
+    <div id="local-import" hidden>
+      <p class="form-hint" id="local-import-label"></p>
+      <div class="backup-actions" id="local-import-buttons"></div>
+    </div>
+    <textarea id="backup-box" aria-label="Backup data" placeholder='Paste quotes here, then press "Add these quotes"'></textarea>
+    <div class="backup-actions">
+      <button type="button" id="backup-copy">Copy my collection</button>
+      <button type="button" id="backup-load">Add these quotes</button>
+    </div>
+
+    <div id="import-options" hidden>
+      <p class="form-hint">Where should these go?</p>
+      <div class="option-group" role="radiogroup" aria-label="Position">
+        <label><input type="radio" name="import-position" value="top" checked> Top (most recent)</label>
+        <label><input type="radio" name="import-position" value="bottom"> Bottom (oldest)</label>
+      </div>
+      <p class="form-hint">How should they be ordered?</p>
+      <div class="option-group" role="radiogroup" aria-label="Order">
+        <label><input type="radio" name="import-order" value="own" checked> Each quote's own date, if it has one</label>
+        <label><input type="radio" name="import-order" value="listed"> The order they're listed in the paste</label>
+      </div>
+      <div class="backup-actions">
+        <button class="primary" type="button" id="import-confirm">Add quotes</button>
+        <button type="button" id="import-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <p class="status" id="backup-status"></p>
+
+    <p class="form-hint">If quotes show garbled characters like <code>â€™</code> instead of an apostrophe (usually from pasting through a text editor that misread the encoding), this fixes them in place.</p>
+    <div class="backup-actions">
+      <button type="button" id="fix-mojibake">Fix garbled text</button>
+    </div>
+    <p class="status" id="mojibake-status"></p>
+  </section>
 </div>
 
 <script type="module">
@@ -574,12 +593,16 @@
     $('boot-view').hidden = name !== 'boot';
     $('login-view').hidden = name !== 'login';
     $('app-view').hidden = name !== 'app';
+    $('import-view').hidden = name !== 'import';
   }
 
   function route() {
     if (!authReady) { showPage('boot'); return; }
     if (location.hash === '#/app') {
       if (me) showPage('app');
+      else location.replace('#/login');
+    } else if (location.hash === '#/import') {
+      if (me) showPage('import');
       else location.replace('#/login');
     } else {
       if (location.hash !== '#/login') {
@@ -755,8 +778,10 @@
   });
   $('menu-import').addEventListener('click', () => {
     closeAccountMenu();
-    $('backup-details').open = true;
-    $('backup-details').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    location.hash = '#/import';
+  });
+  $('import-back').addEventListener('click', () => {
+    location.hash = '#/app';
   });
 
   /* ---- Quote CRUD ---- */

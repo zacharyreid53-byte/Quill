@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quill</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNCAzNCI+PHBhdGggZD0iTTI4IDNMMjMgN0wyNSA4TDE4IDEzTDIwIDE0TDEzIDE4TDEwIDIxQzYgMTYgOSA4IDI4IDNaIiBmaWxsPSIjMjYyMjFDIi8+PHBhdGggZD0iTTkgMjJMNCAyOC41TDMgMzBMNSAyNy41TDEwIDIyLjVaIiBmaWxsPSIjMjYyMjFDIi8+PGNpcmNsZSBjeD0iMyIgY3k9IjMwIiByPSIxLjYiIGZpbGw9IiNFOEE5M0MiLz48L3N2Zz4=">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNCAzNCI+PHBhdGggZD0iTTI4IDNDMjQgNiAyNiAxNCA5IDIxQzYgMTYgOSA4IDI4IDNaIiBmaWxsPSIjMjYyMjFDIi8+PHBhdGggZD0iTTkgMjFMMyAyOUw1IDIyWiIgZmlsbD0iIzI2MjIxQyIvPjxjaXJjbGUgY3g9IjMuNSIgY3k9IjI4LjUiIHI9IjEuNyIgZmlsbD0iI0U4QTkzQyIvPjwvc3ZnPg==">
 </head>
 <body>
 <style>
@@ -64,19 +64,9 @@
 
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
   .logo-row { display: flex; align-items: flex-end; gap: 0.1rem; }
-  .feather {
-    width: 1.7rem;
-    height: 1.7rem;
-    flex-shrink: 0;
-    margin-bottom: -0.05rem;
-    fill: none;
-    stroke: var(--ink);
-    stroke-width: 1.6;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  .feather .barb { stroke-width: 1.1; opacity: 0.6; }
-  .feather .nib-dot { stroke: none; fill: var(--mark); }
+  .feather { width: 1.7rem; height: 1.7rem; flex-shrink: 0; margin-bottom: -0.05rem; }
+  .feather .quill-body { fill: var(--ink); }
+  .feather .nib-dot { fill: var(--mark); }
   .wordmark {
     font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     font-size: 1.6rem;
@@ -326,10 +316,9 @@
       <div class="logo-row">
         <h1 class="wordmark">Quill</h1>
         <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
-          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
-          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
-          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
-          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
+          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 21L3 29L5 22Z" />
+          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
         </svg>
       </div>
       <p class="tagline">The funny things they said.</p>
@@ -377,10 +366,9 @@
       <div class="logo-row">
         <h1 class="wordmark">Quill</h1>
         <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
-          <path class="quill-body" d="M28 3L23 7L25 8L18 13L20 14L13 18L10 21C6 16 9 8 28 3Z" />
-          <path class="quill-body" d="M9 22L4 28.5L3 30L5 27.5L10 22.5Z" />
-          <path class="flourish" d="M3 30C1 30.5 0 32 2 32.5C4 33 4 31.5 6 32C8 32.5 9 31 11 31.5" />
-          <circle class="nib-dot" cx="3" cy="30" r="1.6" />
+          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 21L3 29L5 22Z" />
+          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
         </svg>
       </div>
       <p class="tagline">The funny things they said.</p>
