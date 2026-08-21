@@ -343,6 +343,52 @@
     color: var(--accent-ink);
     font-weight: 600;
   }
+  button.icon-btn[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .filter-wrap { position: relative; }
+  .filter-menu {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    left: 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 11rem;
+    z-index: 10;
+    text-align: left;
+  }
+  .filter-menu[hidden] { display: none; }
+  .filter-menu-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    margin: 0.5rem 0.6rem 0.2rem;
+  }
+  .filter-menu-label:first-child { margin-top: 0.2rem; }
+  .filter-option {
+    border: none;
+    background: none;
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .filter-option:hover { background: var(--paper); }
+  .filter-option[aria-pressed="true"] { font-weight: 600; }
+  .filter-option[aria-pressed="true"]::before { content: "✓ "; }
 
   ul.quotes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
   ul.quotes li {
@@ -590,8 +636,19 @@
     </div>
     <div class="list-tools">
       <input id="search" type="search" placeholder="Search quotes or people&hellip;" aria-label="Search quotes">
-      <button class="chip" id="fav-filter" type="button" aria-pressed="false">&#9733; Favorites</button>
-      <button class="chip" id="owner-filter" type="button" aria-pressed="false">Anyone</button>
+      <div class="filter-wrap">
+        <button class="icon-btn" id="filter-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-pressed="false" aria-label="Filter quotes">
+          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M2 4h16l-6 7v5l-4 2v-7z" /></svg>
+        </button>
+        <div class="filter-menu" id="filter-menu" hidden>
+          <p class="filter-menu-label">Show</p>
+          <button type="button" class="filter-option" id="filter-fav" aria-pressed="false">&#9733; Favorites only</button>
+          <p class="filter-menu-label">Saved by</p>
+          <button type="button" class="filter-option" data-owner="all" aria-pressed="true">Anyone</button>
+          <button type="button" class="filter-option" data-owner="mine" aria-pressed="false">Me</button>
+          <button type="button" class="filter-option" data-owner="others" aria-pressed="false">Others</button>
+        </div>
+      </div>
       <button class="chip" id="select-toggle" type="button" aria-pressed="false">Select</button>
       <button class="primary icon-btn" id="add-quote-toggle" type="button" aria-label="Add a quote">+</button>
     </div>
@@ -1126,10 +1183,10 @@
     openId = null;
     favOnly = false;
     ownerFilter = 'all';
-    updateOwnerFilterButton();
+    updateFilterUI();
+    closeFilterMenu();
     activeCollectionId = null;
     $('collection-filter').hidden = true;
-    $('fav-filter').setAttribute('aria-pressed', 'false');
     selectMode = false;
     selectedIds = new Set();
     $('select-toggle').setAttribute('aria-pressed', 'false');
@@ -1607,24 +1664,43 @@
     }
   }
 
-  $('fav-filter').addEventListener('click', function () {
-    favOnly = !favOnly;
-    this.setAttribute('aria-pressed', String(favOnly));
-    renderList();
+  function updateFilterUI() {
+    $('filter-fav').setAttribute('aria-pressed', String(favOnly));
+    document.querySelectorAll('.filter-option[data-owner]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.owner === ownerFilter));
+    });
+    $('filter-toggle').setAttribute('aria-pressed', String(favOnly || ownerFilter !== 'all'));
+  }
+
+  function closeFilterMenu() {
+    $('filter-menu').hidden = true;
+    $('filter-toggle').setAttribute('aria-expanded', 'false');
+  }
+
+  $('filter-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = $('filter-menu').hidden;
+    $('filter-menu').hidden = !willOpen;
+    $('filter-toggle').setAttribute('aria-expanded', String(willOpen));
+  });
+  document.addEventListener('click', (e) => {
+    if (!$('filter-menu').hidden && !e.target.closest('.filter-wrap')) closeFilterMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeFilterMenu();
   });
 
-  const OWNER_FILTER_STATES = ['all', 'mine', 'others'];
-  const OWNER_FILTER_LABELS = { all: 'Anyone', mine: 'Saved by me', others: 'Saved by others' };
-  function updateOwnerFilterButton() {
-    const btn = $('owner-filter');
-    btn.textContent = OWNER_FILTER_LABELS[ownerFilter];
-    btn.setAttribute('aria-pressed', String(ownerFilter !== 'all'));
-  }
-  $('owner-filter').addEventListener('click', () => {
-    const idx = OWNER_FILTER_STATES.indexOf(ownerFilter);
-    ownerFilter = OWNER_FILTER_STATES[(idx + 1) % OWNER_FILTER_STATES.length];
-    updateOwnerFilterButton();
+  $('filter-fav').addEventListener('click', () => {
+    favOnly = !favOnly;
+    updateFilterUI();
     renderList();
+  });
+  document.querySelectorAll('.filter-option[data-owner]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      ownerFilter = btn.dataset.owner;
+      updateFilterUI();
+      renderList();
+    });
   });
 
   function currentlyShown() {
