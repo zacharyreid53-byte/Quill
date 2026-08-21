@@ -582,9 +582,11 @@
     <div id="select-bar" hidden>
       <span id="select-count">0 selected</span>
       <button type="button" id="select-all">Select all shown</button>
+      <button type="button" id="select-share">Share selected</button>
       <button class="quiet danger" type="button" id="select-delete">Delete selected</button>
       <button type="button" id="select-cancel">Cancel</button>
     </div>
+    <div id="select-share-panel" class="share-panel" hidden></div>
     <div id="add-section" hidden>
       <h2 id="form-title">Add a quote</h2>
       <form class="add" id="add-form">
@@ -1212,6 +1214,22 @@
     }
   }
 
+  async function sendCopiesTo(person, qs, statusEl) {
+    let ok = 0;
+    for (const q of qs) {
+      try {
+        await push(ref(db, 'users/' + person.uid + '/quotes'), {
+          text: q.text, by: q.by || '', note: q.note || '',
+          added: new Date().toISOString(), fav: false, sharedBy: me.name
+        });
+        ok++;
+      } catch (e) { /* keep going; status reports the shortfall */ }
+    }
+    statusEl.textContent = ok === qs.length
+      ? 'Sent ' + ok + ' quote' + (ok === 1 ? '' : 's') + ' to ' + person.name + '.'
+      : 'Sent ' + ok + ' of ' + qs.length + ' to ' + person.name + ' — check your connection and try again for the rest.';
+  }
+
   /* ---- List ---- */
   function renderList() {
     const query = $('search').value.trim().toLowerCase();
@@ -1437,6 +1455,7 @@
     openId = null;
     $('select-toggle').setAttribute('aria-pressed', String(on));
     $('select-bar').hidden = !on;
+    $('select-share-panel').hidden = true;
     renderList();
   }
 
@@ -1448,6 +1467,76 @@
     const allSelected = ids.length > 0 && ids.every((id) => selectedIds.has(id));
     selectedIds = allSelected ? new Set() : new Set(ids);
     renderList();
+  });
+
+  function getSelectedQuotes() {
+    return quotes.filter((q) => selectedIds.has(q.id));
+  }
+
+  function renderSelectSharePanel() {
+    const panel = $('select-share-panel');
+    panel.textContent = '';
+    const status = document.createElement('p');
+    status.className = 'status';
+
+    if (family.length > 0) {
+      const t1 = document.createElement('p');
+      t1.className = 'share-title';
+      t1.textContent = 'Send the selected quotes straight to:';
+      panel.appendChild(t1);
+      const row1 = document.createElement('div');
+      row1.className = 'share-row';
+      family.forEach((person) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = person.name;
+        b.addEventListener('click', () => {
+          const qs = getSelectedQuotes();
+          if (qs.length === 0) return;
+          sendCopiesTo(person, qs, status);
+        });
+        row1.appendChild(b);
+      });
+      panel.appendChild(row1);
+    } else {
+      const t1 = document.createElement('p');
+      t1.className = 'share-title';
+      t1.textContent = 'Nobody else has an account yet — once family sign up, they’ll show up here.';
+      panel.appendChild(t1);
+    }
+
+    const t2 = document.createElement('p');
+    t2.className = 'share-title';
+    t2.textContent = 'Or copy them to send in a message:';
+    panel.appendChild(t2);
+    const row2 = document.createElement('div');
+    row2.className = 'share-row';
+    const copyTxt = document.createElement('button');
+    copyTxt.type = 'button';
+    copyTxt.textContent = 'Copy as text';
+    copyTxt.addEventListener('click', () => {
+      const qs = getSelectedQuotes();
+      if (qs.length === 0) return;
+      const text = qs.map(shareAsText).join('\n\n');
+      copyToClipboard(text, () => {
+        status.textContent = 'Copied ' + qs.length + ' quote' + (qs.length === 1 ? '' : 's') + ' — paste them anywhere.';
+      }, () => {
+        status.textContent = text;
+      });
+    });
+    row2.appendChild(copyTxt);
+    panel.appendChild(row2);
+    panel.appendChild(status);
+  }
+
+  $('select-share').addEventListener('click', () => {
+    if (selectedIds.size === 0) {
+      alert('Select at least one quote first.');
+      return;
+    }
+    const panel = $('select-share-panel');
+    if (panel.hidden) renderSelectSharePanel();
+    panel.hidden = !panel.hidden;
   });
 
   $('select-delete').addEventListener('click', async () => {
