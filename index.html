@@ -264,6 +264,23 @@
 
   .list-tools { display: flex; gap: 0.6rem; margin-bottom: 1rem; align-items: center; }
   .list-tools input { flex: 1; }
+  #select-bar {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding: 0.6rem 0.8rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  #select-bar[hidden] { display: none; }
+  .quote-check { width: 1.1rem; height: 1.1rem; flex-shrink: 0; margin-top: 0.15rem; cursor: pointer; }
+  ul.quotes li.selecting { display: flex; gap: 0.7rem; align-items: flex-start; }
+  ul.quotes li.selecting .qbody { flex: 1; min-width: 0; }
   button.icon-btn {
     width: 2.1rem;
     height: 2.1rem;
@@ -474,7 +491,14 @@
     <div class="list-tools">
       <input id="search" type="search" placeholder="Search quotes or people&hellip;" aria-label="Search quotes">
       <button class="chip" id="fav-filter" type="button" aria-pressed="false">&#9733; Favorites</button>
+      <button class="chip" id="select-toggle" type="button" aria-pressed="false">Select</button>
       <button class="primary icon-btn" id="add-quote-toggle" type="button" aria-label="Add a quote">+</button>
+    </div>
+    <div id="select-bar" hidden>
+      <span id="select-count">0 selected</span>
+      <button type="button" id="select-all">Select all shown</button>
+      <button class="quiet danger" type="button" id="select-delete">Delete selected</button>
+      <button type="button" id="select-cancel">Cancel</button>
     </div>
     <div id="add-section" hidden>
       <h2 id="form-title">Add a quote</h2>
@@ -586,6 +610,8 @@
   let editingId = null;
   let openId = null;
   let favOnly = false;
+  let selectMode = false;
+  let selectedIds = new Set();
   let authReady = false;
 
   /* ---- Routing: sign-in and app are separate pages ---- */
@@ -674,6 +700,10 @@
     openId = null;
     favOnly = false;
     $('fav-filter').setAttribute('aria-pressed', 'false');
+    selectMode = false;
+    selectedIds = new Set();
+    $('select-toggle').setAttribute('aria-pressed', 'false');
+    $('select-bar').hidden = true;
     resetForm();
     closeAddSection();
     closeAccountMenu();
@@ -913,8 +943,23 @@
 
     shown.forEach((q) => {
       const li = document.createElement('li');
-      const isOpen = openId === q.id;
+      const isOpen = !selectMode && openId === q.id;
       if (isOpen) li.classList.add('open');
+
+      let checkbox = null;
+      let body = li;
+      if (selectMode) {
+        li.classList.add('selecting');
+        checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'quote-check';
+        checkbox.checked = selectedIds.has(q.id);
+        checkbox.setAttribute('aria-label', 'Select this quote');
+        li.appendChild(checkbox);
+        body = document.createElement('div');
+        body.className = 'qbody';
+        li.appendChild(body);
+      }
 
       const bq = document.createElement('blockquote');
       if (q.fav) {
@@ -925,13 +970,13 @@
         bq.appendChild(star);
       }
       bq.appendChild(document.createTextNode('“' + q.text + '”'));
-      li.appendChild(bq);
+      body.appendChild(bq);
 
       if (q.note) {
         const note = document.createElement('p');
         note.className = 'note';
         note.textContent = q.note;
-        li.appendChild(note);
+        body.appendChild(note);
       }
 
       const meta = document.createElement('div');
@@ -955,9 +1000,9 @@
       meta.appendChild(spacer);
       const hint = document.createElement('span');
       hint.className = 'hint';
-      hint.textContent = isOpen ? 'click to close' : 'click for actions';
+      hint.textContent = selectMode ? 'tap to select' : (isOpen ? 'click to close' : 'click for actions');
       meta.appendChild(hint);
-      li.appendChild(meta);
+      body.appendChild(meta);
 
       if (isOpen) {
         const actions = document.createElement('div');
@@ -1047,21 +1092,81 @@
       }
 
       li.addEventListener('click', (e) => {
+        if (selectMode) {
+          if (e.target.closest('input')) return;
+          if (selectedIds.has(q.id)) selectedIds.delete(q.id); else selectedIds.add(q.id);
+          renderList();
+          return;
+        }
         if (e.target.closest('button, input, form, a')) return;
         openId = isOpen ? null : q.id;
         renderList();
       });
+      if (checkbox) {
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedIds.add(q.id); else selectedIds.delete(q.id);
+          renderList();
+        });
+      }
 
       list.appendChild(li);
     });
 
     $('count').textContent = quotes.length === 1 ? '1 quote' : quotes.length + ' quotes';
+    if (selectMode) {
+      $('select-count').textContent = selectedIds.size + ' selected';
+    }
   }
 
   $('fav-filter').addEventListener('click', function () {
     favOnly = !favOnly;
     this.setAttribute('aria-pressed', String(favOnly));
     renderList();
+  });
+
+  function currentlyShown() {
+    const query = $('search').value.trim().toLowerCase();
+    return quotes.filter((q) => {
+      if (favOnly && !q.fav) return false;
+      return matchesSearch(q, query);
+    });
+  }
+
+  function setSelectMode(on) {
+    selectMode = on;
+    selectedIds = new Set();
+    openId = null;
+    $('select-toggle').setAttribute('aria-pressed', String(on));
+    $('select-bar').hidden = !on;
+    renderList();
+  }
+
+  $('select-toggle').addEventListener('click', () => setSelectMode(!selectMode));
+  $('select-cancel').addEventListener('click', () => setSelectMode(false));
+
+  $('select-all').addEventListener('click', () => {
+    const ids = currentlyShown().map((q) => q.id);
+    const allSelected = ids.length > 0 && ids.every((id) => selectedIds.has(id));
+    selectedIds = allSelected ? new Set() : new Set(ids);
+    renderList();
+  });
+
+  $('select-delete').addEventListener('click', async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm('Delete ' + ids.length + ' quote' + (ids.length === 1 ? '' : 's') + '? This can’t be undone.')) return;
+    const btn = $('select-delete');
+    btn.disabled = true;
+    let done = 0;
+    for (const id of ids) {
+      try {
+        await remove(ref(db, 'users/' + me.uid + '/quotes/' + id));
+        done++;
+      } catch (e) { /* keep going; user can retry any that failed */ }
+    }
+    btn.disabled = false;
+    setSelectMode(false);
+    alert('Deleted ' + done + ' of ' + ids.length + ' selected quotes.');
   });
 
   /* ---- Add / edit / delete ---- */
@@ -1211,9 +1316,11 @@
       if (order === 'own' && ownDate) {
         return Object.assign({}, r, { added: ownDate });
       }
+      // Treat the paste as chronological, first line oldest: the first item
+      // lands closest to existing content, the last item farthest from it.
       const t = position === 'top'
-        ? newestExisting + (n - i) * 1000
-        : oldestExisting - (i + 1) * 1000;
+        ? newestExisting + (i + 1) * 1000
+        : oldestExisting - (n - i) * 1000;
       return Object.assign({}, r, { added: new Date(t).toISOString() });
     });
   }
