@@ -378,8 +378,8 @@
   ul.quotes .meta .hint { font-size: 0.75rem; }
   ul.quotes .note { margin: 0.3rem 0 0; font-size: 0.85rem; font-style: italic; color: var(--ink-soft); }
 
-  ul.collections { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
-  ul.collections li {
+  ul.collections, ul.friends { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  ul.collections li, ul.friends li {
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 4px;
@@ -400,6 +400,7 @@
     padding: 0;
   }
   ul.collections .col-count { font-size: 0.8rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  ul.friends .friend-name { flex: 1; font-size: 1rem; font-weight: 600; color: var(--ink); }
 
   .collection-filter {
     display: flex;
@@ -711,10 +712,47 @@
   </section>
 </div>
 
+<div class="wrap" id="friends-view" hidden>
+  <header>
+    <div class="header-left">
+      <button class="icon-btn nav-toggle-btn" id="nav-toggle-friends" type="button" aria-label="Menu" aria-haspopup="true" aria-expanded="false">&#9776;</button>
+      <div class="logo-row">
+        <h1 class="wordmark">Quill</h1>
+        <svg class="feather" viewBox="0 0 34 34" aria-hidden="true">
+          <path class="quill-body" d="M28 3C24 6 26 14 9 21C6 16 9 8 28 3Z" />
+          <path class="quill-body" d="M9 21L3 29L5 22Z" />
+          <circle class="nib-dot" cx="3.5" cy="28.5" r="1.7" />
+        </svg>
+      </div>
+      <p class="tagline">That's going in the quotebook.</p>
+    </div>
+  </header>
+
+  <section>
+    <h2>Add a friend</h2>
+    <form class="add" id="friend-form">
+      <label>Username
+        <input id="friend-username" required placeholder="their username">
+      </label>
+      <div class="form-actions">
+        <button class="primary" type="submit" id="friend-submit">Add friend</button>
+        <p class="form-error" id="friend-error"></p>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>Your friends</h2>
+    <ul class="friends" id="friend-list"></ul>
+    <div class="empty" id="friends-empty" hidden>No friends added yet — add one above by their username.</div>
+  </section>
+</div>
+
 <div id="drawer-overlay" hidden></div>
 <nav id="nav-drawer" hidden aria-label="Main navigation">
   <button type="button" class="drawer-link" id="drawer-quotes" aria-current="page">Quotes</button>
   <button type="button" class="drawer-link" id="drawer-collections">Collections</button>
+  <button type="button" class="drawer-link" id="drawer-friends">Friends</button>
 </nav>
 
 <script type="module">
@@ -745,6 +783,8 @@
   let quotes = [];        /* my quotes, live from Firestore */
   let unsubscribe = null; /* Firestore listener */
   let unsubscribeCollections = null;
+  let unsubscribeFriends = null;
+  let friends = [];
   let collections = [];
   let activeCollectionId = null;
   let editingId = null;
@@ -761,8 +801,10 @@
     $('app-view').hidden = name !== 'app';
     $('import-view').hidden = name !== 'import';
     $('collections-view').hidden = name !== 'collections';
+    $('friends-view').hidden = name !== 'friends';
     $('drawer-quotes').setAttribute('aria-current', name === 'app' ? 'page' : 'false');
     $('drawer-collections').setAttribute('aria-current', name === 'collections' ? 'page' : 'false');
+    $('drawer-friends').setAttribute('aria-current', name === 'friends' ? 'page' : 'false');
   }
 
   function route() {
@@ -775,6 +817,9 @@
       else location.replace('#/login');
     } else if (location.hash === '#/collections') {
       if (me) showPage('collections');
+      else location.replace('#/login');
+    } else if (location.hash === '#/friends') {
+      if (me) showPage('friends');
       else location.replace('#/login');
     } else {
       if (location.hash !== '#/login') {
@@ -807,6 +852,10 @@
   $('drawer-collections').addEventListener('click', () => {
     closeDrawer();
     location.hash = '#/collections';
+  });
+  $('drawer-friends').addEventListener('click', () => {
+    closeDrawer();
+    location.hash = '#/friends';
   });
 
   /* ---- Collections ---- */
@@ -919,6 +968,58 @@
     }
   });
 
+  function renderFriendsList() {
+    const list = $('friend-list');
+    list.textContent = '';
+    $('friends-empty').hidden = friends.length > 0;
+
+    friends.forEach((f) => {
+      const li = document.createElement('li');
+
+      const name = document.createElement('span');
+      name.className = 'friend-name';
+      name.textContent = f.name;
+      li.appendChild(name);
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'quiet danger';
+      delBtn.textContent = 'Remove';
+      delBtn.addEventListener('click', async () => {
+        if (!confirm('Remove ' + f.name + ' from your friends?')) return;
+        try {
+          await remove(ref(db, 'users/' + me.uid + '/friends/' + f.uid));
+        } catch (e) {
+          alert('Couldn’t remove — check your connection.');
+        }
+      });
+      li.appendChild(delBtn);
+
+      list.appendChild(li);
+    });
+  }
+
+  $('friend-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('friend-error');
+    err.textContent = '';
+    const input = normalizeUsername($('friend-username').value);
+    if (!input) { err.textContent = 'Enter a username.'; return; }
+    if (input === normalizeUsername(me.name)) { err.textContent = 'That’s your own username.'; return; }
+    const match = family.find((p) => normalizeUsername(p.name) === input);
+    if (!match) { err.textContent = 'No account found with that username.'; return; }
+    if (friends.some((f) => f.uid === match.uid)) { err.textContent = match.name + ' is already on your list.'; return; }
+    $('friend-submit').disabled = true;
+    try {
+      await set(ref(db, 'users/' + me.uid + '/friends/' + match.uid), { name: match.name, added: new Date().toISOString() });
+      $('friend-form').reset();
+    } catch (e2) {
+      err.textContent = 'Couldn’t add — check your connection.';
+    } finally {
+      $('friend-submit').disabled = false;
+    }
+  });
+
   const USERNAME_DOMAIN = '@users.quill.app';
 
   function normalizeUsername(raw) {
@@ -949,11 +1050,13 @@
     authReady = true;
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
     if (unsubscribeCollections) { unsubscribeCollections(); unsubscribeCollections = null; }
+    if (unsubscribeFriends) { unsubscribeFriends(); unsubscribeFriends = null; }
 
     if (!user) {
       me = null;
       quotes = [];
       collections = [];
+      friends = [];
       family = [];
       route();
       return;
@@ -989,6 +1092,15 @@
       }
       populateCollectionSelect();
       renderCollectionsList();
+    });
+
+    unsubscribeFriends = onValue(ref(db, 'users/' + me.uid + '/friends'), (snap) => {
+      const val = snap.val() || {};
+      friends = Object.keys(val)
+        .map((uid) => ({ uid, name: (val[uid] || {}).name || 'Someone', added: (val[uid] || {}).added || '' }))
+        .filter((f) => f && typeof f.name === 'string' && f.name);
+      friends.sort((a, b) => a.name.localeCompare(b.name));
+      renderFriendsList();
     });
 
     openId = null;

@@ -21,6 +21,13 @@
           "$cid": {
             ".validate": "newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 60"
           }
+        },
+        "friends": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid",
+          "$fuid": {
+            ".validate": "newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 60"
+          }
         }
       }
     }
