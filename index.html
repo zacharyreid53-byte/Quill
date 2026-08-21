@@ -358,6 +358,9 @@
   details .inner { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
   details.backup textarea { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.75rem; min-height: 6rem; }
   .backup-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  #import-options { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+  .option-group { display: flex; flex-direction: column; gap: 0.35rem; margin: 0.4rem 0 0.9rem; }
+  .option-group label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: var(--ink); cursor: pointer; }
   .status { font-size: 0.85rem; color: var(--ink-soft); margin: 0; min-height: 1.3em; }
   code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85em; }
 </style>
@@ -505,6 +508,24 @@
         <button type="button" id="backup-copy">Copy my collection</button>
         <button type="button" id="backup-load">Add these quotes</button>
       </div>
+
+      <div id="import-options" hidden>
+        <p class="form-hint">Where should these go?</p>
+        <div class="option-group" role="radiogroup" aria-label="Position">
+          <label><input type="radio" name="import-position" value="top" checked> Top (most recent)</label>
+          <label><input type="radio" name="import-position" value="bottom"> Bottom (oldest)</label>
+        </div>
+        <p class="form-hint">How should they be ordered?</p>
+        <div class="option-group" role="radiogroup" aria-label="Order">
+          <label><input type="radio" name="import-order" value="own" checked> Each quote's own date, if it has one</label>
+          <label><input type="radio" name="import-order" value="listed"> The order they're listed in the paste</label>
+        </div>
+        <div class="backup-actions">
+          <button class="primary" type="button" id="import-confirm">Add quotes</button>
+          <button type="button" id="import-cancel">Cancel</button>
+        </div>
+      </div>
+
       <p class="status" id="backup-status"></p>
 
       <p class="form-hint">If quotes show garbled characters like <code>â€™</code> instead of an apostrophe (usually from pasting through a text editor that misread the encoding), this fixes them in place.</p>
@@ -1113,7 +1134,9 @@
     });
   });
 
-  $('backup-load').addEventListener('click', async () => {
+  let pendingImportRows = null;
+
+  $('backup-load').addEventListener('click', () => {
     const raw = $('backup-box').value.trim();
     if (!raw) { $('backup-status').textContent = 'Paste quotes into the box first.'; return; }
     let incoming;
@@ -1122,12 +1145,53 @@
       return;
     }
     if (incoming && !Array.isArray(incoming) && typeof incoming === 'object') incoming = [incoming];
-    if (!Array.isArray(incoming)) {
+    if (!Array.isArray(incoming) || incoming.length === 0) {
       $('backup-status').textContent = 'That doesn’t look like Quill data — paste the whole thing.';
       return;
     }
-    await importQuotes(incoming, $('backup-status'));
+    pendingImportRows = incoming;
+    $('backup-status').textContent = 'Choose how to add ' + incoming.length + ' quote' + (incoming.length === 1 ? '' : 's') + ', then confirm below.';
+    $('import-options').hidden = false;
   });
+
+  $('import-cancel').addEventListener('click', () => {
+    pendingImportRows = null;
+    $('import-options').hidden = true;
+    $('backup-status').textContent = '';
+  });
+
+  $('import-confirm').addEventListener('click', async () => {
+    if (!pendingImportRows) return;
+    const position = document.querySelector('input[name="import-position"]:checked').value;
+    const order = document.querySelector('input[name="import-order"]:checked').value;
+    const rows = assignImportDates(pendingImportRows, position, order);
+    pendingImportRows = null;
+    $('import-options').hidden = true;
+    await importQuotes(rows, $('backup-status'));
+  });
+
+  /* Decides the "added" timestamp each imported quote gets, so the batch
+     lands at the top or bottom of the (always newest-first) list, either
+     keeping each quote's own date or treating the whole paste as one new
+     block in the order it was listed. */
+  function assignImportDates(rows, position, order) {
+    const now = Date.now();
+    const existingTimes = quotes.map((q) => Date.parse(q.added)).filter((t) => !isNaN(t));
+    const newestExisting = existingTimes.length ? Math.max(...existingTimes, now) : now;
+    const oldestExisting = existingTimes.length ? Math.min(...existingTimes) : now;
+    const n = rows.length;
+
+    return rows.map((r, i) => {
+      const ownDate = r && typeof r.added === 'string' && !isNaN(Date.parse(r.added)) ? r.added : null;
+      if (order === 'own' && ownDate) {
+        return Object.assign({}, r, { added: ownDate });
+      }
+      const t = position === 'top'
+        ? newestExisting + (n - i) * 1000
+        : oldestExisting - (i + 1) * 1000;
+      return Object.assign({}, r, { added: new Date(t).toISOString() });
+    });
+  }
 
   $('fix-mojibake').addEventListener('click', async () => {
     const statusEl = $('mojibake-status');
