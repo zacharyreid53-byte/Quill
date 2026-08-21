@@ -437,8 +437,22 @@
     flex-direction: column;
     gap: 0.6rem;
   }
-  .share-panel .share-title { font-size: 0.8rem; color: var(--ink-soft); margin: 0; }
-  .share-panel .share-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .share-title { font-size: 0.8rem; color: var(--ink-soft); margin: 0; }
+  .share-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .check-pill {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+  }
+  .check-pill input { margin: 0; }
 
   .empty {
     border: 1px dashed var(--line);
@@ -577,6 +591,7 @@
     <div class="list-tools">
       <input id="search" type="search" placeholder="Search quotes or people&hellip;" aria-label="Search quotes">
       <button class="chip" id="fav-filter" type="button" aria-pressed="false">&#9733; Favorites</button>
+      <button class="chip" id="owner-filter" type="button" aria-pressed="false">Anyone</button>
       <button class="chip" id="select-toggle" type="button" aria-pressed="false">Select</button>
       <button class="primary icon-btn" id="add-quote-toggle" type="button" aria-label="Add a quote">+</button>
     </div>
@@ -605,6 +620,10 @@
             <option value="">No collection</option>
           </select>
         </label>
+        <div id="f-share-field" hidden>
+          <p class="share-title">Share with <span style="text-transform:none; letter-spacing:0;">(optional)</span></p>
+          <div class="share-row" id="f-share-with"></div>
+        </div>
         <div class="form-actions">
           <button class="primary" type="submit" id="f-submit">Save quote</button>
           <button type="button" id="f-cancel">Cancel</button>
@@ -790,6 +809,7 @@
   let editingId = null;
   let openId = null;
   let favOnly = false;
+  let ownerFilter = 'all'; /* 'all' | 'mine' | 'others' */
   let selectMode = false;
   let selectedIds = new Set();
   let authReady = false;
@@ -1105,6 +1125,8 @@
 
     openId = null;
     favOnly = false;
+    ownerFilter = 'all';
+    updateOwnerFilterButton();
     activeCollectionId = null;
     $('collection-filter').hidden = true;
     $('fav-filter').setAttribute('aria-pressed', 'false');
@@ -1133,6 +1155,37 @@
     } catch (e) {
       family = [];
     }
+    populateShareWith();
+  }
+
+  function populateShareWith() {
+    const wrap = $('f-share-with');
+    wrap.textContent = '';
+    family.forEach((person) => {
+      const label = document.createElement('label');
+      label.className = 'check-pill';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = person.uid;
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(person.name));
+      wrap.appendChild(label);
+    });
+    $('f-share-field').hidden = family.length === 0 || !!editingId;
+  }
+
+  async function shareNewQuoteWith(uids, data) {
+    let ok = 0;
+    for (const uid of uids) {
+      try {
+        await push(ref(db, 'users/' + uid + '/quotes'), {
+          text: data.text, by: data.by, note: data.note,
+          added: new Date().toISOString(), fav: false, sharedBy: me.name
+        });
+        ok++;
+      } catch (e) { /* best effort; the quote is already saved for the user */ }
+    }
+    return ok;
   }
 
   /* ---- Sign in / sign up / sign out ---- */
@@ -1352,6 +1405,8 @@
     const shown = quotes.filter((q) => {
       if (favOnly && !q.fav) return false;
       if (activeCollectionId && q.collectionId !== activeCollectionId) return false;
+      if (ownerFilter === 'mine' && q.sharedBy) return false;
+      if (ownerFilter === 'others' && !q.sharedBy) return false;
       return matchesSearch(q, query);
     });
     shown.sort((a, b) => (b.added || '').localeCompare(a.added || ''));
@@ -1360,12 +1415,18 @@
     if (shown.length === 0) {
       if (quotes.length === 0) {
         empty.textContent = 'No quotes yet. The best ones are the throwaway lines — write them down before they fade.';
-      } else if (activeCollectionId && !query && !favOnly) {
+      } else if (activeCollectionId && !query && !favOnly && ownerFilter === 'all') {
         empty.textContent = 'No quotes in this collection yet — add one, or assign an existing quote to it from Edit.';
-      } else if (favOnly && !query) {
+      } else if (favOnly && !query && ownerFilter === 'all') {
         empty.textContent = 'No favorites yet — open a quote and press the star.';
+      } else if (ownerFilter !== 'all' && !query && !favOnly) {
+        empty.textContent = ownerFilter === 'mine' ? 'No quotes saved by you yet.' : 'No quotes saved by others yet.';
       } else {
-        empty.textContent = 'Nothing matches “' + $('search').value.trim() + '”' + (favOnly ? ' in your favorites' : '') + '.';
+        let suffix = '';
+        if (favOnly) suffix += ' in your favorites';
+        if (ownerFilter === 'mine') suffix += (suffix ? ' and' : '') + ' saved by you';
+        else if (ownerFilter === 'others') suffix += (suffix ? ' and' : '') + ' saved by others';
+        empty.textContent = 'Nothing matches “' + $('search').value.trim() + '”' + suffix + '.';
       }
     }
 
@@ -1552,11 +1613,27 @@
     renderList();
   });
 
+  const OWNER_FILTER_STATES = ['all', 'mine', 'others'];
+  const OWNER_FILTER_LABELS = { all: 'Anyone', mine: 'Saved by me', others: 'Saved by others' };
+  function updateOwnerFilterButton() {
+    const btn = $('owner-filter');
+    btn.textContent = OWNER_FILTER_LABELS[ownerFilter];
+    btn.setAttribute('aria-pressed', String(ownerFilter !== 'all'));
+  }
+  $('owner-filter').addEventListener('click', () => {
+    const idx = OWNER_FILTER_STATES.indexOf(ownerFilter);
+    ownerFilter = OWNER_FILTER_STATES[(idx + 1) % OWNER_FILTER_STATES.length];
+    updateOwnerFilterButton();
+    renderList();
+  });
+
   function currentlyShown() {
     const query = $('search').value.trim().toLowerCase();
     return quotes.filter((q) => {
       if (favOnly && !q.fav) return false;
       if (activeCollectionId && q.collectionId !== activeCollectionId) return false;
+      if (ownerFilter === 'mine' && q.sharedBy) return false;
+      if (ownerFilter === 'others' && !q.sharedBy) return false;
       return matchesSearch(q, query);
     });
   }
@@ -1687,6 +1764,7 @@
     $('add-form').reset();
     $('f-note').placeholder = NOTE_PLACEHOLDER;
     $('f-collection').value = activeCollectionId || '';
+    $('f-share-field').hidden = family.length === 0;
     $('form-title').textContent = 'Add a quote';
     $('f-submit').textContent = 'Save quote';
     $('f-hint').textContent = '';
@@ -1701,6 +1779,7 @@
     $('f-note').value = q.note || '';
     $('f-note').placeholder = '';
     $('f-collection').value = q.collectionId || '';
+    $('f-share-field').hidden = true;
     $('form-title').textContent = 'Edit quote';
     $('f-submit').textContent = 'Save changes';
     openAddSection();
@@ -1736,9 +1815,13 @@
         resetForm();
         closeAddSection();
       } else {
+        const shareUids = Array.from($('f-share-with').querySelectorAll('input:checked')).map((el) => el.value);
         await addQuote(quoteData(text, by, note, collectionId));
+        const sharedCount = shareUids.length > 0 ? await shareNewQuoteWith(shareUids, { text, by, note }) : 0;
         resetForm();
-        $('f-hint').textContent = "That's going in the quote book.";
+        $('f-hint').textContent = sharedCount > 0
+          ? "That's going in the quote book — shared with " + sharedCount + (sharedCount === 1 ? ' person.' : ' people.')
+          : "That's going in the quote book.";
         setTimeout(() => { if (!editingId) $('f-hint').textContent = ''; }, 2000);
       }
     } catch (err) {
