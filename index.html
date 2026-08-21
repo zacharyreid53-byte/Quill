@@ -425,6 +425,7 @@
     flex-wrap: wrap;
     align-items: center;
   }
+  .share-panel[hidden] { display: none; }
   .share-panel {
     margin-top: 0.75rem;
     padding: 0.75rem;
@@ -508,7 +509,7 @@
     <h2 id="auth-heading">Sign in</h2>
     <form class="panel" id="signin-form">
       <label>Username
-        <input id="si-username" type="text" required autocomplete="username" placeholder="zach">
+        <input id="si-username" type="text" required autocomplete="username" placeholder="letters and numbers, no spaces">
       </label>
       <label>Password
         <input id="si-pass" type="password" required autocomplete="current-password">
@@ -521,7 +522,7 @@
 
     <form class="panel" id="signup-form" hidden>
       <label>Username <span style="text-transform:none;">(how you'll appear to family when sharing)</span>
-        <input id="su-username" type="text" required maxlength="40" autocomplete="username" placeholder="zach">
+        <input id="su-username" type="text" required maxlength="40" autocomplete="username" placeholder="letters and numbers, no spaces">
       </label>
       <label>Password <span style="text-transform:none;">(at least 6 characters)</span>
         <input id="su-pass" type="password" required minlength="6" autocomplete="new-password">
