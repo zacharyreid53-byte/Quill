@@ -1537,10 +1537,12 @@
       const spacer = document.createElement('span');
       spacer.className = 'spacer';
       meta.appendChild(spacer);
-      const hint = document.createElement('span');
-      hint.className = 'hint';
-      hint.textContent = selectMode ? 'tap to select' : (isOpen ? 'click to close' : 'click for actions');
-      meta.appendChild(hint);
+      if (selectMode || isOpen) {
+        const hint = document.createElement('span');
+        hint.className = 'hint';
+        hint.textContent = selectMode ? 'tap to select' : 'click to close';
+        meta.appendChild(hint);
+      }
       body.appendChild(meta);
 
       if (isOpen) {
