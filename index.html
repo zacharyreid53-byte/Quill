@@ -305,18 +305,19 @@
   .list-tools input { flex: 1; }
   #select-bar {
     display: flex;
+    flex-direction: column;
     gap: 0.6rem;
-    align-items: center;
-    flex-wrap: wrap;
     margin-bottom: 1rem;
-    padding: 0.6rem 0.8rem;
+    padding: 0.7rem 0.9rem;
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 4px;
-    font-size: 0.85rem;
-    color: var(--ink-soft);
   }
   #select-bar[hidden] { display: none; }
+  .select-bar-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+  #select-count { font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+  .select-bar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  button.chip.danger { color: var(--danger); border-color: var(--danger); }
   .quote-check { width: 1.1rem; height: 1.1rem; flex-shrink: 0; margin-top: 0.15rem; cursor: pointer; }
   ul.quotes li.selecting { display: flex; gap: 0.7rem; align-items: flex-start; }
   ul.quotes li.selecting .qbody { flex: 1; min-width: 0; }
@@ -648,11 +649,15 @@
       <button class="primary icon-btn" id="add-quote-toggle" type="button" aria-label="Add a quote">+</button>
     </div>
     <div id="select-bar" hidden>
-      <span id="select-count">0 selected</span>
-      <button type="button" id="select-all">Select all shown</button>
-      <button type="button" id="select-share">Share selected</button>
-      <button class="quiet danger" type="button" id="select-delete">Delete selected</button>
-      <button type="button" id="select-cancel">Cancel</button>
+      <div class="select-bar-row">
+        <span id="select-count">0 selected</span>
+        <button class="quiet" type="button" id="select-cancel">Cancel</button>
+      </div>
+      <div class="select-bar-actions">
+        <button class="chip" type="button" id="select-all">Select all</button>
+        <button class="chip" type="button" id="select-share">Share</button>
+        <button class="chip danger" type="button" id="select-delete">Delete</button>
+      </div>
     </div>
     <div id="select-share-panel" class="share-panel" hidden></div>
     <div id="add-section" hidden>
