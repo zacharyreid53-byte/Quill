@@ -1455,7 +1455,11 @@
       if (ownerFilter === 'others' && !q.sharedBy) return false;
       return matchesSearch(q, query);
     });
-    shown.sort((a, b) => (b.added || '').localeCompare(a.added || ''));
+    shown.sort((a, b) => {
+      const aImp = a.imported ? 1 : 0, bImp = b.imported ? 1 : 0;
+      if (aImp !== bImp) return aImp - bImp;
+      return (b.added || '').localeCompare(a.added || '');
+    });
 
     empty.hidden = shown.length > 0;
     if (shown.length === 0) {
@@ -1903,7 +1907,7 @@
   /* ---- Bulk copy / paste ---- */
   $('backup-copy').addEventListener('click', () => {
     const payload = JSON.stringify(
-      quotes.map(({ text, by, note, added, fav, sharedBy, collectionId }) => ({ text, by, note, added, fav, sharedBy, collectionId })),
+      quotes.map(({ text, by, note, added, fav, sharedBy, collectionId, imported }) => ({ text, by, note, added, fav, sharedBy, collectionId, imported: !!imported })),
       null, 2
     );
     $('backup-box').value = payload;
@@ -2018,7 +2022,8 @@
           added: typeof inQ.added === 'string' ? inQ.added : new Date().toISOString(),
           fav: !!inQ.fav,
           sharedBy: typeof inQ.sharedBy === 'string' ? inQ.sharedBy : '',
-          collectionId: typeof inQ.collectionId === 'string' ? inQ.collectionId : ''
+          collectionId: typeof inQ.collectionId === 'string' ? inQ.collectionId : '',
+          imported: true
         });
         added++;
       } catch (e) { failed++; }
