@@ -1057,7 +1057,7 @@
         try {
           await remove(ref(db, 'users/' + me.uid + '/friends/' + f.uid));
         } catch (e) {
-          alert('Couldn’t remove — check your connection.');
+          alert('Couldn’t remove (' + (e.code || e.message || 'error') + ') — try again.');
         }
       });
       li.appendChild(delBtn);
@@ -1081,7 +1081,7 @@
       await set(ref(db, 'users/' + me.uid + '/friends/' + match.uid), { name: match.name, added: new Date().toISOString() });
       $('friend-form').reset();
     } catch (e2) {
-      err.textContent = 'Couldn’t add — check your connection.';
+      err.textContent = 'Couldn’t add (' + (e2.code || e2.message || 'error') + ') — try again.';
     } finally {
       $('friend-submit').disabled = false;
     }
