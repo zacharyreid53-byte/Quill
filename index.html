@@ -405,7 +405,20 @@
     font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     font-size: 1.05rem;
   }
-  ul.quotes blockquote .fav-mark { color: var(--mark); margin-right: 0.35rem; }
+  ul.quotes .meta .fav-toggle {
+    border: none;
+    background: none;
+    padding: 0 0 0 0.2rem;
+    margin: -0.3rem -0.2rem -0.3rem 0;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: var(--ink-soft);
+    cursor: pointer;
+    align-self: center;
+  }
+  ul.quotes .meta .fav-toggle.on { color: var(--mark); }
+  ul.quotes .meta .fav-toggle:hover:not(:disabled) { color: var(--mark); }
+  ul.quotes .meta .fav-toggle:disabled { cursor: default; opacity: 1; }
   ul.quotes .meta {
     margin-top: 0.5rem;
     display: flex;
@@ -1564,13 +1577,6 @@
       }
 
       const bq = document.createElement('blockquote');
-      if (q.fav) {
-        const star = document.createElement('span');
-        star.className = 'fav-mark';
-        star.textContent = '★';
-        star.setAttribute('aria-label', 'Favorite');
-        bq.appendChild(star);
-      }
       bq.appendChild(document.createTextNode('“' + q.text + '”'));
       body.appendChild(bq);
 
@@ -1606,18 +1612,26 @@
         hint.textContent = selectMode ? 'tap to select' : 'click to close';
         meta.appendChild(hint);
       }
+      /* Star toggle, always on the card so favoriting never needs the card
+         opened. Disabled while selecting, where a tap means "select". */
+      const favStar = document.createElement('button');
+      favStar.type = 'button';
+      favStar.className = 'fav-toggle' + (q.fav ? ' on' : '');
+      favStar.textContent = q.fav ? '★' : '☆';
+      favStar.disabled = selectMode;
+      favStar.setAttribute('aria-pressed', String(!!q.fav));
+      favStar.setAttribute('aria-label', q.fav ? 'Remove from favorites' : 'Add to favorites');
+      favStar.title = q.fav ? 'Remove from favorites' : 'Add to favorites';
+      favStar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFav(q.id);
+      });
+      meta.appendChild(favStar);
       body.appendChild(meta);
 
       if (isOpen) {
         const actions = document.createElement('div');
         actions.className = 'actions';
-
-        const fav = document.createElement('button');
-        fav.type = 'button';
-        fav.innerHTML = q.fav ? '&#9733; Favorited' : '&#9734; Favorite';
-        if (q.fav) fav.classList.add('star');
-        fav.addEventListener('click', () => toggleFav(q.id));
-        actions.appendChild(fav);
 
         const shareBtn = document.createElement('button');
         shareBtn.type = 'button';
