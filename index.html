@@ -486,6 +486,16 @@
   }
   .share-title { font-size: 0.8rem; color: var(--ink-soft); margin: 0; }
   .share-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  button.shared-already {
+    color: var(--ink-soft);
+    border-style: dashed;
+    opacity: 1;
+  }
+  .share-panel .status:not(:empty) {
+    font-size: 0.85rem;
+    color: var(--ink);
+    margin: 0;
+  }
   .check-pill {
     display: flex;
     flex-direction: row;
@@ -851,6 +861,10 @@
   let unsubscribeCollections = null;
   let unsubscribeFriends = null;
   let friends = [];
+  let unsubscribeShares = null;
+  /* shareLog[quoteId][recipientUid] = when — so a quote is never sent twice
+     to the same person, across all three ways of sharing. */
+  let shareLog = {};
   let collections = [];
   let activeCollectionId = null;
   let editingId = null;
@@ -1118,6 +1132,7 @@
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
     if (unsubscribeCollections) { unsubscribeCollections(); unsubscribeCollections = null; }
     if (unsubscribeFriends) { unsubscribeFriends(); unsubscribeFriends = null; }
+    if (unsubscribeShares) { unsubscribeShares(); unsubscribeShares = null; }
 
     if (!user) {
       me = null;
@@ -1125,6 +1140,7 @@
       collections = [];
       friends = [];
       family = [];
+      shareLog = {};
       route();
       return;
     }
@@ -1168,6 +1184,11 @@
         .filter((f) => f && typeof f.name === 'string' && f.name);
       friends.sort((a, b) => a.name.localeCompare(b.name));
       renderFriendsList();
+    });
+
+    unsubscribeShares = onValue(ref(db, 'users/' + me.uid + '/shares'), (snap) => {
+      shareLog = snap.val() || {};
+      renderList();
     });
 
     openId = null;
@@ -1221,7 +1242,7 @@
     $('f-share-field').hidden = family.length === 0 || !!editingId;
   }
 
-  async function shareNewQuoteWith(uids, data) {
+  async function shareNewQuoteWith(uids, data, quoteId) {
     let ok = 0;
     for (const uid of uids) {
       try {
@@ -1229,6 +1250,7 @@
           text: data.text, by: data.by, note: data.note,
           added: new Date().toISOString(), fav: false, sharedBy: me.name
         });
+        await recordShare(quoteId, uid);
         ok++;
       } catch (e) { /* best effort; the quote is already saved for the user */ }
     }
@@ -1414,32 +1436,72 @@
     return line;
   }
 
-  async function sendCopyTo(person, q, statusEl) {
+  function listNames(names) {
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return names[0] + ' and ' + names[1];
+    return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+  }
+
+  function alreadyShared(quoteId, uid) {
+    return !!(quoteId && shareLog[quoteId] && shareLog[quoteId][uid]);
+  }
+
+  /* Records the send in our own tree so the same quote is never offered to
+     the same person twice. Kept separate from the send itself: if this write
+     fails the quote still arrived, so it's logged locally either way. */
+  async function recordShare(quoteId, uid) {
+    if (!quoteId) return;
+    if (!shareLog[quoteId]) shareLog[quoteId] = {};
+    shareLog[quoteId][uid] = new Date().toISOString();
     try {
-      await push(ref(db, 'users/' + person.uid + '/quotes'), {
-        text: q.text, by: q.by || '', note: q.note || '',
-        added: new Date().toISOString(), fav: false, sharedBy: me.name
-      });
-      statusEl.textContent = 'Sent — it’s in ' + person.name + '’s collection now, on every device.';
+      await set(ref(db, 'users/' + me.uid + '/shares/' + quoteId + '/' + uid), shareLog[quoteId][uid]);
+    } catch (e) { /* the onValue listener will reconcile on the next load */ }
+  }
+
+  async function sendOneTo(person, q) {
+    await push(ref(db, 'users/' + person.uid + '/quotes'), {
+      text: q.text, by: q.by || '', note: q.note || '',
+      added: new Date().toISOString(), fav: false, sharedBy: me.name
+    });
+    await recordShare(q.id, person.uid);
+  }
+
+  async function sendCopyTo(person, q, statusEl) {
+    if (alreadyShared(q.id, person.uid)) {
+      statusEl.textContent = person.name + ' already has this one.';
+      return;
+    }
+    statusEl.textContent = 'Sending to ' + person.name + '…';
+    try {
+      await sendOneTo(person, q);
+      statusEl.textContent = '✓ Sent to ' + person.name + ' — it’s in their collection now.';
+      renderList();
     } catch (e) {
-      statusEl.textContent = 'Couldn’t send to ' + person.name + ' (' + (e.message || 'error') + ').';
+      statusEl.textContent = 'Couldn’t send to ' + person.name + ' (' + (e.code || e.message || 'error') + ').';
     }
   }
 
   async function sendCopiesTo(person, qs, statusEl) {
-    let ok = 0;
-    for (const q of qs) {
-      try {
-        await push(ref(db, 'users/' + person.uid + '/quotes'), {
-          text: q.text, by: q.by || '', note: q.note || '',
-          added: new Date().toISOString(), fav: false, sharedBy: me.name
-        });
-        ok++;
-      } catch (e) { /* keep going; status reports the shortfall */ }
+    const fresh = qs.filter((q) => !alreadyShared(q.id, person.uid));
+    const dupes = qs.length - fresh.length;
+    if (fresh.length === 0) {
+      statusEl.textContent = person.name + ' already has ' +
+        (qs.length === 1 ? 'that quote' : 'all ' + qs.length + ' of those quotes') + '.';
+      return;
     }
-    statusEl.textContent = ok === qs.length
-      ? 'Sent ' + ok + ' quote' + (ok === 1 ? '' : 's') + ' to ' + person.name + '.'
-      : 'Sent ' + ok + ' of ' + qs.length + ' to ' + person.name + ' — check your connection and try again for the rest.';
+    statusEl.textContent = 'Sending to ' + person.name + '…';
+    let ok = 0, failed = 0;
+    for (const q of fresh) {
+      try {
+        await sendOneTo(person, q);
+        ok++;
+      } catch (e) { failed++; }
+    }
+    let msg = '✓ Sent ' + ok + ' quote' + (ok === 1 ? '' : 's') + ' to ' + person.name + '.';
+    if (dupes) msg += ' Skipped ' + dupes + ' they already had.';
+    if (failed) msg += ' ' + failed + ' failed — try again for those.';
+    statusEl.textContent = msg;
+    renderList();
   }
 
   /* ---- List ---- */
@@ -1595,8 +1657,15 @@
           family.forEach((person) => {
             const b = document.createElement('button');
             b.type = 'button';
-            b.textContent = person.name;
-            b.addEventListener('click', () => sendCopyTo(person, q, shareStatus));
+            if (alreadyShared(q.id, person.uid)) {
+              b.textContent = '✓ ' + person.name;
+              b.className = 'shared-already';
+              b.disabled = true;
+              b.title = person.name + ' already has this quote';
+            } else {
+              b.textContent = person.name;
+              b.addEventListener('click', () => sendCopyTo(person, q, shareStatus));
+            }
             row1.appendChild(b);
           });
           sharePanel.appendChild(row1);
@@ -1734,11 +1803,12 @@
     return quotes.filter((q) => selectedIds.has(q.id));
   }
 
-  function renderSelectSharePanel() {
+  function renderSelectSharePanel(keepMessage) {
     const panel = $('select-share-panel');
     panel.textContent = '';
     const status = document.createElement('p');
     status.className = 'status';
+    if (keepMessage) status.textContent = keepMessage;
 
     if (family.length > 0) {
       const t1 = document.createElement('p');
@@ -1747,15 +1817,25 @@
       panel.appendChild(t1);
       const row1 = document.createElement('div');
       row1.className = 'share-row';
+      const selected = getSelectedQuotes();
       family.forEach((person) => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.textContent = person.name;
-        b.addEventListener('click', () => {
-          const qs = getSelectedQuotes();
-          if (qs.length === 0) return;
-          sendCopiesTo(person, qs, status);
-        });
+        const fresh = selected.filter((q) => !alreadyShared(q.id, person.uid)).length;
+        if (fresh === 0 && selected.length > 0) {
+          b.textContent = '✓ ' + person.name;
+          b.className = 'shared-already';
+          b.disabled = true;
+          b.title = person.name + ' already has every selected quote';
+        } else {
+          b.textContent = person.name + (fresh < selected.length ? ' (' + fresh + ' new)' : '');
+          b.addEventListener('click', async () => {
+            const qs = getSelectedQuotes();
+            if (qs.length === 0) return;
+            await sendCopiesTo(person, qs, status);
+            renderSelectSharePanel(status.textContent);
+          });
+        }
         row1.appendChild(b);
       });
       panel.appendChild(row1);
@@ -1888,13 +1968,16 @@
         closeAddSection();
       } else {
         const shareUids = Array.from($('f-share-with').querySelectorAll('input:checked')).map((el) => el.value);
-        await addQuote(quoteData(text, by, note, collectionId));
-        const sharedCount = shareUids.length > 0 ? await shareNewQuoteWith(shareUids, { text, by, note }) : 0;
+        const newRef = await addQuote(quoteData(text, by, note, collectionId));
+        const names = shareUids.map((uid) => (family.find((p) => p.uid === uid) || {}).name).filter(Boolean);
+        const sharedCount = shareUids.length > 0
+          ? await shareNewQuoteWith(shareUids, { text, by, note }, newRef && newRef.key)
+          : 0;
         resetForm();
         $('f-hint').textContent = sharedCount > 0
-          ? "That's going in the quote book — shared with " + sharedCount + (sharedCount === 1 ? ' person.' : ' people.')
+          ? "That's going in the quote book — ✓ shared with " + listNames(names) + '.'
           : "That's going in the quote book.";
-        setTimeout(() => { if (!editingId) $('f-hint').textContent = ''; }, 2000);
+        setTimeout(() => { if (!editingId) $('f-hint').textContent = ''; }, 4000);
       }
     } catch (err) {
       $('f-hint').textContent = 'Couldn’t save (' + (err.code || 'error') + ') — try again.';
