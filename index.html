@@ -718,16 +718,12 @@
     </div>
 
     <div id="import-options" hidden>
-      <p class="form-hint">Where should these go?</p>
-      <div class="option-group" role="radiogroup" aria-label="Position">
-        <label><input type="radio" name="import-position" value="top" checked> Top (most recent)</label>
-        <label><input type="radio" name="import-position" value="bottom"> Bottom (oldest)</label>
-      </div>
       <p class="form-hint">How should they be ordered?</p>
       <div class="option-group" role="radiogroup" aria-label="Order">
         <label><input type="radio" name="import-order" value="own" checked> Each quote's own date, if it has one</label>
         <label><input type="radio" name="import-order" value="listed"> The order they're listed in the paste</label>
       </div>
+      <p class="form-hint">Quotes without their own date won't get a made-up one — they'll just show no date.</p>
       <div class="backup-actions">
         <button class="primary" type="button" id="import-confirm">Add quotes</button>
         <button type="button" id="import-cancel">Cancel</button>
@@ -1949,36 +1945,23 @@
 
   $('import-confirm').addEventListener('click', async () => {
     if (!pendingImportRows) return;
-    const position = document.querySelector('input[name="import-position"]:checked').value;
     const order = document.querySelector('input[name="import-order"]:checked').value;
-    const rows = assignImportDates(pendingImportRows, position, order);
+    const rows = assignImportDates(pendingImportRows, order);
     pendingImportRows = null;
     $('import-options').hidden = true;
     await importQuotes(rows, $('backup-status'));
   });
 
-  /* Decides the "added" timestamp each imported quote gets, so the batch
-     lands at the top or bottom of the (always newest-first) list, either
-     keeping each quote's own date or treating the whole paste as one new
-     block in the order it was listed. */
-  function assignImportDates(rows, position, order) {
-    const now = Date.now();
-    const existingTimes = quotes.map((q) => Date.parse(q.added)).filter((t) => !isNaN(t));
-    const newestExisting = existingTimes.length ? Math.max(...existingTimes, now) : now;
-    const oldestExisting = existingTimes.length ? Math.min(...existingTimes) : now;
-    const n = rows.length;
-
-    return rows.map((r, i) => {
+  /* Keeps each quote's own date when asked to and it has one; otherwise leaves
+     "added" blank rather than inventing one. Imported quotes always sort to
+     the end of the list, so undated ones just fall back to paste order there. */
+  function assignImportDates(rows, order) {
+    return rows.map((r) => {
       const ownDate = r && typeof r.added === 'string' && !isNaN(Date.parse(r.added)) ? r.added : null;
       if (order === 'own' && ownDate) {
         return Object.assign({}, r, { added: ownDate });
       }
-      // Treat the paste as chronological, first line oldest: the first item
-      // lands closest to existing content, the last item farthest from it.
-      const t = position === 'top'
-        ? newestExisting + (i + 1) * 1000
-        : oldestExisting - (n - i) * 1000;
-      return Object.assign({}, r, { added: new Date(t).toISOString() });
+      return Object.assign({}, r, { added: '' });
     });
   }
 
@@ -2021,7 +2004,7 @@
           text: inQ.text,
           by: typeof inQ.by === 'string' ? inQ.by : '',
           note: typeof inQ.note === 'string' ? inQ.note : '',
-          added: typeof inQ.added === 'string' ? inQ.added : new Date().toISOString(),
+          added: typeof inQ.added === 'string' ? inQ.added : '',
           fav: !!inQ.fav,
           sharedBy: typeof inQ.sharedBy === 'string' ? inQ.sharedBy : '',
           collectionId: typeof inQ.collectionId === 'string' ? inQ.collectionId : '',
