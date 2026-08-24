@@ -34,6 +34,35 @@
           ".write": "auth != null && auth.uid === $uid"
         }
       }
+    },
+
+    "pit": {
+      "admin": {
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists()"
+      },
+      "market": {
+        ".read": "auth != null",
+        "question": { ".write": "auth != null && auth.uid === root.child('pit/admin').val()" },
+        "description": { ".write": "auth != null && auth.uid === root.child('pit/admin').val()" },
+        "resolved": { ".write": "auth != null && auth.uid === root.child('pit/admin').val()" },
+        "outcome": {
+          ".write": "auth != null && auth.uid === root.child('pit/admin').val()",
+          ".validate": "newData.val() === 'yes' || newData.val() === 'no'"
+        },
+        "b": {
+          ".write": "auth != null && auth.uid === root.child('pit/admin').val()",
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "qYes": { ".write": "auth != null", ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "qNo": { ".write": "auth != null", ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "participants": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || auth.uid === root.child('pit/admin').val())",
+            ".validate": "newData.child('cash').isNumber() && newData.child('cash').val() >= 0 && newData.child('yes').isNumber() && newData.child('yes').val() >= 0 && newData.child('no').isNumber() && newData.child('no').val() >= 0"
+          }
+        }
+      }
     }
   }
 }

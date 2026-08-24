@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pit</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='16' fill='%232C55D9'/%3E%3Ctext x='50' y='68' font-size='58' font-family='Georgia,serif' fill='white' text-anchor='middle'%3E%25%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#FDF9F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1F1C16" media="(prefers-color-scheme: dark)">
+<script>
+  /* ============================================================
+     Same Firebase project Quill uses works fine here — this app
+     lives entirely under its own "pit/" node in the Realtime
+     Database, so it can't collide with Quill's data. Point it at
+     any Firebase project's web config (Firebase console → Project
+     settings → Your apps → Web app → SDK setup and configuration).
+     ============================================================ */
+  window.PIT_FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDYNx6R9KEor2eMHBT0k-CqNveV1jGcwZ8",
+    authDomain: "quill-230f3.firebaseapp.com",
+    databaseURL: "https://quill-230f3-default-rtdb.firebaseio.com",
+    projectId: "quill-230f3",
+    appId: "1:711102883084:web:dc094ec9f8575f874e5529"
+  };
+</script>
+</head>
+<body>
+<style>
+  :root {
+    --paper: #FDF9F0;
+    --card: #FFFFFF;
+    --ink: #26221C;
+    --ink-soft: #6E675A;
+    --line: #E7DFCE;
+    --accent: #2C55D9;
+    --accent-ink: #FFFFFF;
+    --yes: #1D7A4C;
+    --yes-soft: #DCEFE2;
+    --no: #B4372F;
+    --no-soft: #F6DEDB;
+    --danger: #B4372F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1F1C16; --card: #29251E; --ink: #F1EADB; --ink-soft: #A79D8A;
+      --line: #3B362C; --accent: #8FA9F2; --accent-ink: #141B33;
+      --yes: #63C695; --yes-soft: #1E3327; --no: #E58077; --no-soft: #3A2320; --danger: #E58077;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.5;
+  }
+  .wrap { max-width: 34rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; display: flex; flex-direction: column; gap: 1.75rem; }
+  .wrap[hidden] { display: none; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .wordmark { font-family: Georgia, serif; font-size: 1.6rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.4rem; }
+  .wordmark .pct { color: var(--accent); }
+  .tagline { color: var(--ink-soft); font-size: 0.9rem; margin: 0.1rem 0 0; }
+  .whoami { text-align: right; font-size: 0.85rem; color: var(--ink-soft); display: flex; align-items: center; gap: 0.6rem; }
+  .cash-pill {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 0.3rem 0.8rem;
+    font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink);
+  }
+  .account { position: relative; }
+  .avatar {
+    width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+    border: none; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+  }
+  .account-menu {
+    position: absolute; top: calc(100% + 0.4rem); right: 0; background: var(--card); border: 1px solid var(--line);
+    border-radius: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 0.5rem; display: flex; flex-direction: column;
+    gap: 0.15rem; min-width: 11rem; z-index: 10; text-align: left;
+  }
+  .account-menu[hidden] { display: none; }
+  .account-name { font-size: 0.8rem; font-weight: 600; color: var(--ink); margin: 0.2rem 0.6rem 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--line); }
+  .account-menu button { border: none; background: none; text-align: left; padding: 0.5rem 0.6rem; border-radius: 4px; font-size: 0.85rem; color: var(--ink); cursor: pointer; }
+  .account-menu button:hover { background: var(--paper); }
+
+  .hero { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 2rem; }
+  .login-intro { font-family: Georgia, serif; font-size: 1.3rem; margin: 0; text-wrap: balance; }
+
+  button { font: inherit; cursor: pointer; border-radius: 4px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 0.5rem 1rem; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.quiet { border: none; background: none; color: var(--ink-soft); padding: 0.25rem 0.4rem; font-size: 0.85rem; }
+  button.quiet.danger { color: var(--danger); }
+  button:disabled { opacity: 0.55; cursor: default; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  h2 { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); margin: 0 0 0.75rem; }
+  .panel, form.panel { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  label { font-size: 0.85rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 0.3rem; }
+  input:not([type=radio]):not([type=checkbox]), textarea {
+    font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 0.55rem 0.7rem; width: 100%;
+  }
+  .form-actions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+  .form-error { font-size: 0.85rem; color: var(--danger); margin: 0; min-height: 1.3em; }
+  .form-hint { font-size: 0.8rem; color: var(--ink-soft); margin: 0; }
+
+  .market-card { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 1.5rem; }
+  .market-q { font-family: Georgia, serif; font-size: 1.3rem; margin: 0 0 0.35rem; text-wrap: balance; }
+  .market-desc { font-size: 0.9rem; color: var(--ink-soft); margin: 0 0 1.1rem; }
+  .resolved-banner {
+    margin: 0 0 1rem; padding: 0.6rem 0.9rem; border-radius: 4px; font-size: 0.9rem; font-weight: 600;
+  }
+  .resolved-banner.yes { background: var(--yes-soft); color: var(--yes); }
+  .resolved-banner.no { background: var(--no-soft); color: var(--no); }
+
+  .price-row { display: flex; gap: 0.75rem; margin-bottom: 0.6rem; }
+  .price-box { flex: 1; text-align: center; border-radius: 4px; padding: 0.75rem 0.5rem; }
+  .price-box.yes { background: var(--yes-soft); }
+  .price-box.no { background: var(--no-soft); }
+  .price-box .label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .price-box.yes .label { color: var(--yes); }
+  .price-box.no .label { color: var(--no); }
+  .price-box .value { font-family: ui-monospace, monospace; font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .prob-bar { height: 0.5rem; border-radius: 999px; overflow: hidden; display: flex; margin-bottom: 1.25rem; }
+  .prob-bar .yes-part { background: var(--yes); }
+  .prob-bar .no-part { background: var(--no); }
+
+  .position-row { display: flex; gap: 1.5rem; font-size: 0.9rem; flex-wrap: wrap; }
+  .position-row .stat .k { color: var(--ink-soft); font-size: 0.78rem; }
+  .position-row .stat .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .trade-toggle { display: flex; gap: 0.5rem; }
+  .trade-toggle button { flex: 1; }
+  .trade-toggle button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  .side-toggle { display: flex; gap: 0.5rem; }
+  .side-toggle button { flex: 1; }
+  .side-toggle button.yes[aria-pressed="true"] { background: var(--yes); border-color: var(--yes); color: white; font-weight: 700; }
+  .side-toggle button.no[aria-pressed="true"] { background: var(--no); border-color: var(--no); color: white; font-weight: 700; }
+  .chip-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  button.chip { font-size: 0.8rem; padding: 0.35rem 0.7rem; color: var(--ink-soft); }
+  .trade-preview { font-size: 0.9rem; padding: 0.7rem 0.9rem; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; }
+  .trade-preview .cost { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  ul.board { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  ul.board li { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; background: var(--card); border: 1px solid var(--line); border-radius: 4px; font-size: 0.88rem; }
+  ul.board .rank { color: var(--ink-soft); font-variant-numeric: tabular-nums; width: 1.3rem; }
+  ul.board .name { flex: 1; font-weight: 600; }
+  ul.board .val { font-variant-numeric: tabular-nums; font-weight: 700; }
+  ul.board li.me { border-color: var(--accent); }
+
+  details.admin summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-soft); font-weight: 600; }
+  .admin-body { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--line); }
+  .admin-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .status { font-size: 0.85rem; color: var(--ink-soft); margin: 0; min-height: 1.2em; }
+</style>
+
+<!-- ============ Loading ============ -->
+<div class="wrap" id="boot-view">
+  <header><h1 class="wordmark">Pit <span class="pct">%</span></h1></header>
+  <section class="hero"><p class="login-intro" id="boot-message">Connecting&hellip;</p></section>
+</div>
+
+<!-- ============ Sign-in (#/login) ============ -->
+<div class="wrap" id="login-view" hidden>
+  <header>
+    <div>
+      <h1 class="wordmark">Pit <span class="pct">%</span></h1>
+      <p class="tagline">One market. Pick a side.</p>
+    </div>
+  </header>
+  <section>
+    <h2 id="auth-heading">Sign in</h2>
+    <form class="panel" id="signin-form">
+      <label>Username <input id="si-username" type="text" required autocomplete="username" placeholder="letters and numbers, no spaces"></label>
+      <label>Password <input id="si-pass" type="password" required autocomplete="current-password"></label>
+      <div class="form-actions"><button class="primary" type="submit" id="si-submit">Sign in</button></div>
+      <p class="form-error" id="si-error"></p>
+    </form>
+    <form class="panel" id="signup-form" hidden>
+      <label>Username <input id="su-username" type="text" required maxlength="40" autocomplete="username" placeholder="letters and numbers, no spaces"></label>
+      <label>Password <span style="text-transform:none;">(at least 6 characters)</span><input id="su-pass" type="password" required minlength="6" autocomplete="new-password"></label>
+      <div class="form-actions"><button class="primary" type="submit" id="su-submit">Create account</button></div>
+      <p class="form-error" id="su-error"></p>
+    </form>
+    <p class="form-hint"><button type="button" class="quiet" id="auth-toggle-btn">New here? Create an account</button></p>
+  </section>
+</div>
+
+<!-- ============ App (#/app) ============ -->
+<div class="wrap" id="app-view" hidden>
+  <header>
+    <h1 class="wordmark">Pit <span class="pct">%</span></h1>
+    <div class="whoami">
+      <span class="cash-pill" id="cash-pill"></span>
+      <div class="account">
+        <button class="avatar" id="account-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Account menu"></button>
+        <div class="account-menu" id="account-menu" hidden>
+          <p class="account-name" id="account-name"></p>
+          <button type="button" id="menu-signout">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="market-card" id="market-card">
+    <p class="resolved-banner" id="resolved-banner" hidden></p>
+    <p class="market-q" id="market-q"></p>
+    <p class="market-desc" id="market-desc"></p>
+
+    <div class="price-row">
+      <div class="price-box yes"><div class="label">Yes</div><div class="value" id="yes-price">&mdash;</div></div>
+      <div class="price-box no"><div class="label">No</div><div class="value" id="no-price">&mdash;</div></div>
+    </div>
+    <div class="prob-bar"><div class="yes-part" id="prob-yes" style="width:50%"></div><div class="no-part" id="prob-no" style="width:50%"></div></div>
+
+    <div class="position-row">
+      <div class="stat"><div class="k">Cash</div><div class="v" id="pos-cash">&mdash;</div></div>
+      <div class="stat"><div class="k">Yes shares</div><div class="v" id="pos-yes">&mdash;</div></div>
+      <div class="stat"><div class="k">No shares</div><div class="v" id="pos-no">&mdash;</div></div>
+      <div class="stat"><div class="k">Portfolio value</div><div class="v" id="pos-value">&mdash;</div></div>
+    </div>
+  </section>
+
+  <section class="panel" id="trade-panel">
+    <h2>Trade</h2>
+    <div class="trade-toggle">
+      <button type="button" id="action-buy" aria-pressed="true">Buy</button>
+      <button type="button" id="action-sell" aria-pressed="false">Sell</button>
+    </div>
+    <div class="side-toggle">
+      <button type="button" class="yes" id="side-yes" aria-pressed="true">Yes</button>
+      <button type="button" class="no" id="side-no" aria-pressed="false">No</button>
+    </div>
+    <label>Shares (contracts)<input id="trade-shares" type="number" min="1" step="1" inputmode="numeric" placeholder="10"></label>
+    <div class="chip-row">
+      <button type="button" class="chip" data-qty="10">10</button>
+      <button type="button" class="chip" data-qty="25">25</button>
+      <button type="button" class="chip" data-qty="50">50</button>
+      <button type="button" class="chip" data-qty="100">100</button>
+    </div>
+    <div class="trade-preview" id="trade-preview">Enter a share count to see the price.</div>
+    <div class="form-actions"><button class="primary" type="button" id="trade-confirm">Buy Yes</button></div>
+    <p class="form-error" id="trade-error"></p>
+  </section>
+
+  <section>
+    <h2>Leaderboard</h2>
+    <ul class="board" id="board"></ul>
+  </section>
+
+  <details class="admin" id="admin-panel" hidden>
+    <summary>Market admin</summary>
+    <div class="admin-body">
+      <div class="admin-row">
+        <button type="button" id="admin-edit">Edit question</button>
+        <button type="button" id="admin-resolve-yes">Resolve: Yes</button>
+        <button type="button" id="admin-resolve-no">Resolve: No</button>
+      </div>
+      <div class="admin-row" id="admin-new-round-row" hidden>
+        <button type="button" class="primary" id="admin-new-round">Start new round</button>
+      </div>
+      <p class="status" id="admin-status"></p>
+    </div>
+  </details>
+</div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
+  import {
+    getAuth, onAuthStateChanged, createUserWithEmailAndPassword,
+    signInWithEmailAndPassword, signOut, updateProfile
+  } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
+  import {
+    getDatabase, ref, update, onValue, get, runTransaction
+  } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js';
+
+  const $ = (id) => document.getElementById(id);
+  const config = window.PIT_FIREBASE_CONFIG;
+
+  if (!config || !config.apiKey || config.apiKey.indexOf('PASTE_') === 0) {
+    $('boot-message').textContent = 'Pit isn’t connected to Firebase yet — open pit.html and fill in PIT_FIREBASE_CONFIG near the top.';
+    throw new Error('Firebase config missing');
+  }
+
+  const app = initializeApp(config);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  const STARTING_CASH = 1000;
+  const DEFAULT_B = 100;
+
+  let me = null;         /* {uid, name} */
+  let market = null;     /* live market snapshot */
+  let adminUid = null;
+  let authReady = false;
+  let tradeAction = 'buy';   /* buy | sell */
+  let tradeSide = 'yes';     /* yes | no */
+
+  /* ---- Routing ---- */
+  function showPage(name) {
+    $('boot-view').hidden = name !== 'boot';
+    $('login-view').hidden = name !== 'login';
+    $('app-view').hidden = name !== 'app';
+  }
+  function route() {
+    if (!authReady) { showPage('boot'); return; }
+    if (location.hash === '#/app') {
+      if (me) showPage('app'); else location.replace('#/login');
+    } else {
+      if (location.hash !== '#/login') { try { history.replaceState(null, '', '#/login'); } catch (e) { location.hash = '#/login'; } }
+      showPage('login');
+    }
+  }
+  window.addEventListener('hashchange', route);
+
+  /* ---- Username <-> fake email (Firebase Auth needs an email) ---- */
+  const USERNAME_DOMAIN = '@users.pit.app';
+  function normalizeUsername(raw) { return (raw || '').trim().toLowerCase().replace(/[^a-z0-9_.-]/g, ''); }
+  function usernameToEmail(raw) { return normalizeUsername(raw) + USERNAME_DOMAIN; }
+  function emailToUsername(email) { return (email || '').split('@')[0]; }
+  function friendlyAuthError(err) {
+    const code = err && err.code || '';
+    if (code.includes('email-already-in-use')) return 'That username is taken — try another.';
+    if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) return 'Username or password isn’t right.';
+    if (code.includes('weak-password')) return 'Password needs at least 6 characters.';
+    if (code.includes('invalid-email')) return 'That username has characters we can’t use — stick to letters, numbers, dots, underscores, and hyphens.';
+    if (code.includes('too-many-requests')) return 'Too many tries — wait a minute and try again.';
+    if (code.includes('network-request-failed')) return 'Can’t reach the server — check your connection.';
+    return 'Something went wrong (' + (code || 'unknown') + '). Try again.';
+  }
+
+  /* ---- LMSR pricing ----
+     C(qy,qn) = b * ln(e^(qy/b) + e^(qn/b))   — cost function
+     price(yes) = 1 / (1 + e^((qn-qy)/b))     — always in (0,1) */
+  function costFn(qy, qn, b) {
+    const mx = Math.max(qy, qn);
+    return mx + b * Math.log(Math.exp((qy - mx) / b) + Math.exp((qn - mx) / b));
+  }
+  function priceYes(qy, qn, b) { return 1 / (1 + Math.exp((qn - qy) / b)); }
+  function tradeCost(qy, qn, b, side, delta) {
+    const newQy = side === 'yes' ? qy + delta : qy;
+    const newQn = side === 'no' ? qn + delta : qn;
+    return costFn(newQy, newQn, b) - costFn(qy, qn, b);
+  }
+  const fmt$ = (x) => '$' + (Math.round(x * 100) / 100).toFixed(2);
+  const fmtC = (p) => Math.round(p * 100) + '¢';
+
+  /* ---- Bootstrap admin + market if this is the very first visit ---- */
+  async function bootstrapIfNeeded() {
+    await runTransaction(ref(db, 'pit/admin'), (cur) => (cur ? undefined : me.uid));
+    await runTransaction(ref(db, 'pit/market'), (cur) => {
+      if (cur) return undefined;
+      return {
+        question: 'Will it rain here tomorrow?',
+        description: 'Resolves Yes if measurable rain falls at the agreed location before midnight tomorrow, No otherwise. (Admin can edit this.)',
+        b: DEFAULT_B, qYes: 0, qNo: 0, resolved: false, outcome: null, participants: {}
+      };
+    });
+  }
+
+  async function ensureParticipant() {
+    await runTransaction(ref(db, 'pit/market/participants/' + me.uid), (cur) => {
+      if (cur) return undefined;
+      return { name: me.name, cash: STARTING_CASH, yes: 0, no: 0 };
+    });
+  }
+
+  /* ---- Auth state ---- */
+  onAuthStateChanged(auth, async (user) => {
+    authReady = true;
+    if (!user) { me = null; market = null; route(); return; }
+    me = { uid: user.uid, name: user.displayName || emailToUsername(user.email) };
+    setAccountName(me.name);
+
+    try {
+      const adminSnap = await get(ref(db, 'pit/admin'));
+      adminUid = adminSnap.val();
+      await bootstrapIfNeeded();
+      if (!adminUid) adminUid = (await get(ref(db, 'pit/admin'))).val();
+      await ensureParticipant();
+    } catch (e) { /* best effort — listener below will still try */ }
+
+    $('admin-panel').hidden = adminUid !== me.uid;
+
+    onValue(ref(db, 'pit/market'), (snap) => {
+      market = snap.val();
+      renderMarket();
+    }, (err) => { alert('Lost the connection to the market (' + (err.message || 'unknown') + ') — reload the page.'); });
+
+    route();
+  });
+
+  function setAccountName(name) {
+    $('account-toggle').textContent = (name || '?').slice(0, 1).toUpperCase();
+    $('account-name').textContent = name;
+  }
+
+  /* ---- Account menu ---- */
+  $('account-toggle').addEventListener('click', () => {
+    const menu = $('account-menu');
+    const open = menu.hidden;
+    menu.hidden = !open;
+    $('account-toggle').setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.account')) { $('account-menu').hidden = true; $('account-toggle').setAttribute('aria-expanded', 'false'); }
+  });
+  $('menu-signout').addEventListener('click', async () => { $('account-menu').hidden = true; await signOut(auth); location.hash = '#/login'; });
+
+  /* ---- Sign in / sign up ---- */
+  $('auth-toggle-btn').addEventListener('click', () => {
+    const showingSignup = !$('signup-form').hidden;
+    $('signup-form').hidden = showingSignup;
+    $('signin-form').hidden = !showingSignup;
+    $('auth-heading').textContent = showingSignup ? 'Sign in' : 'Create an account';
+    $('auth-toggle-btn').textContent = showingSignup ? 'New here? Create an account' : 'Already have an account? Sign in';
+    $('si-error').textContent = ''; $('su-error').textContent = '';
+  });
+
+  $('signin-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('si-error'); err.textContent = '';
+    const username = normalizeUsername($('si-username').value);
+    if (!username) { err.textContent = 'Enter a username.'; return; }
+    $('si-submit').disabled = true;
+    try { await signInWithEmailAndPassword(auth, usernameToEmail(username), $('si-pass').value); location.hash = '#/app'; }
+    catch (e2) { err.textContent = friendlyAuthError(e2); }
+    finally { $('si-submit').disabled = false; }
+  });
+
+  $('signup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('su-error'); err.textContent = '';
+    const username = normalizeUsername($('su-username').value);
+    if (!username) { err.textContent = 'Enter a username (letters, numbers, dots, underscores, hyphens).'; return; }
+    $('su-submit').disabled = true;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, usernameToEmail(username), $('su-pass').value);
+      await updateProfile(cred.user, { displayName: username });
+      location.hash = '#/app';
+    } catch (e2) { err.textContent = friendlyAuthError(e2); }
+    finally { $('su-submit').disabled = false; }
+  });
+
+  /* ---- Render market ---- */
+  function renderMarket() {
+    if (!market) return;
+    const qy = market.qYes || 0, qn = market.qNo || 0, b = market.b || DEFAULT_B;
+    const py = priceYes(qy, qn, b), pn = 1 - py;
+    $('market-q').textContent = market.question || '';
+    $('market-desc').textContent = market.description || '';
+    $('yes-price').textContent = fmtC(py);
+    $('no-price').textContent = fmtC(pn);
+    $('prob-yes').style.width = (py * 100).toFixed(1) + '%';
+    $('prob-no').style.width = (pn * 100).toFixed(1) + '%';
+
+    const resolved = !!market.resolved;
+    const banner = $('resolved-banner');
+    banner.hidden = !resolved;
+    if (resolved) {
+      banner.className = 'resolved-banner ' + market.outcome;
+      banner.textContent = 'Market resolved: ' + (market.outcome === 'yes' ? 'YES' : 'NO') + ' — shares paid out.';
+    }
+    $('trade-panel').hidden = resolved;
+
+    const p = (market.participants && market.participants[me.uid]) || { cash: STARTING_CASH, yes: 0, no: 0 };
+    $('cash-pill').textContent = fmt$(p.cash);
+    $('pos-cash').textContent = fmt$(p.cash);
+    $('pos-yes').textContent = p.yes || 0;
+    $('pos-no').textContent = p.no || 0;
+    const value = p.cash + (p.yes || 0) * py + (p.no || 0) * pn;
+    $('pos-value').textContent = fmt$(value);
+
+    renderBoard(qy, qn, b);
+    renderPreview();
+
+    if (adminUid === me.uid) $('admin-new-round-row').hidden = !resolved;
+  }
+
+  function renderBoard(qy, qn, b) {
+    const py = priceYes(qy, qn, b), pn = 1 - py;
+    const participants = (market && market.participants) || {};
+    const rows = Object.keys(participants).map((uid) => {
+      const p = participants[uid];
+      const value = (p.cash || 0) + (p.yes || 0) * py + (p.no || 0) * pn;
+      return { uid, name: p.name || 'trader', value };
+    }).sort((a, b2) => b2.value - a.value);
+
+    const board = $('board');
+    board.textContent = '';
+    rows.forEach((r, i) => {
+      const li = document.createElement('li');
+      if (r.uid === me.uid) li.className = 'me';
+      const rank = document.createElement('span'); rank.className = 'rank'; rank.textContent = (i + 1) + '.';
+      const name = document.createElement('span'); name.className = 'name'; name.textContent = r.name + (r.uid === me.uid ? ' (you)' : '');
+      const val = document.createElement('span'); val.className = 'val'; val.textContent = fmt$(r.value);
+      li.append(rank, name, val);
+      board.appendChild(li);
+    });
+    if (rows.length === 0) { const li = document.createElement('li'); li.textContent = 'No traders yet.'; board.appendChild(li); }
+  }
+
+  /* ---- Trade panel ---- */
+  function setPressed(el, on) { el.setAttribute('aria-pressed', String(on)); }
+  $('action-buy').addEventListener('click', () => { tradeAction = 'buy'; setPressed($('action-buy'), true); setPressed($('action-sell'), false); renderPreview(); });
+  $('action-sell').addEventListener('click', () => { tradeAction = 'sell'; setPressed($('action-buy'), false); setPressed($('action-sell'), true); renderPreview(); });
+  $('side-yes').addEventListener('click', () => { tradeSide = 'yes'; setPressed($('side-yes'), true); setPressed($('side-no'), false); renderPreview(); });
+  $('side-no').addEventListener('click', () => { tradeSide = 'no'; setPressed($('side-yes'), false); setPressed($('side-no'), true); renderPreview(); });
+  document.querySelectorAll('.chip[data-qty]').forEach((btn) => {
+    btn.addEventListener('click', () => { $('trade-shares').value = btn.dataset.qty; renderPreview(); });
+  });
+  $('trade-shares').addEventListener('input', renderPreview);
+
+  function renderPreview() {
+    const btn = $('trade-confirm');
+    btn.textContent = (tradeAction === 'buy' ? 'Buy ' : 'Sell ') + (tradeSide === 'yes' ? 'Yes' : 'No');
+    $('trade-error').textContent = '';
+    if (!market || market.resolved) { $('trade-preview').textContent = 'Market is resolved — trading is closed.'; btn.disabled = true; return; }
+    const shares = Math.floor(Number($('trade-shares').value));
+    if (!(shares > 0)) { $('trade-preview').textContent = 'Enter a share count to see the price.'; btn.disabled = true; return; }
+
+    const qy = market.qYes || 0, qn = market.qNo || 0, b = market.b || DEFAULT_B;
+    const p = (market.participants && market.participants[me.uid]) || { cash: STARTING_CASH, yes: 0, no: 0 };
+    const delta = tradeAction === 'buy' ? shares : -shares;
+    const cost = tradeCost(qy, qn, b, tradeSide, delta);
+
+    if (tradeAction === 'sell') {
+      const owned = tradeSide === 'yes' ? (p.yes || 0) : (p.no || 0);
+      if (owned < shares) {
+        $('trade-preview').innerHTML = 'You only own <span class="cost">' + owned + '</span> ' + (tradeSide === 'yes' ? 'Yes' : 'No') + ' shares.';
+        btn.disabled = true; return;
+      }
+      $('trade-preview').innerHTML = 'Estimated proceeds: <span class="cost">' + fmt$(-cost) + '</span>';
+      btn.disabled = false;
+    } else {
+      if (cost > p.cash) {
+        $('trade-preview').innerHTML = 'Estimated cost: <span class="cost">' + fmt$(cost) + '</span> — more than your ' + fmt$(p.cash) + ' cash.';
+        btn.disabled = true; return;
+      }
+      $('trade-preview').innerHTML = 'Estimated cost: <span class="cost">' + fmt$(cost) + '</span>';
+      btn.disabled = false;
+    }
+  }
+
+  $('trade-confirm').addEventListener('click', async () => {
+    const errEl = $('trade-error'); errEl.textContent = '';
+    const shares = Math.floor(Number($('trade-shares').value));
+    if (!(shares > 0)) { errEl.textContent = 'Enter a whole number of shares.'; return; }
+    const action = tradeAction, side = tradeSide;
+    const delta = action === 'buy' ? shares : -shares;
+    $('trade-confirm').disabled = true;
+
+    let failReason = null;
+    try {
+      const result = await runTransaction(ref(db, 'pit/market'), (cur) => {
+        if (!cur) { failReason = 'Market not found.'; return; }
+        if (cur.resolved) { failReason = 'Market is resolved.'; return; }
+        const b = cur.b || DEFAULT_B;
+        const qy = cur.qYes || 0, qn = cur.qNo || 0;
+        cur.participants = cur.participants || {};
+        const p = cur.participants[me.uid] || { name: me.name, cash: STARTING_CASH, yes: 0, no: 0 };
+
+        if (action === 'sell') {
+          const owned = side === 'yes' ? (p.yes || 0) : (p.no || 0);
+          if (owned < shares) { failReason = 'You don’t own that many shares anymore.'; return; }
+        }
+        const newQy = side === 'yes' ? qy + delta : qy;
+        const newQn = side === 'no' ? qn + delta : qn;
+        if (newQy < 0 || newQn < 0) { failReason = 'Invalid trade.'; return; }
+        const cost = costFn(newQy, newQn, b) - costFn(qy, qn, b);
+        if (action === 'buy' && cost > p.cash) { failReason = 'Not enough cash for that trade anymore.'; return; }
+
+        cur.qYes = newQy;
+        cur.qNo = newQn;
+        cur.participants[me.uid] = {
+          name: p.name || me.name,
+          cash: p.cash - cost,
+          yes: (p.yes || 0) + (side === 'yes' ? delta : 0),
+          no: (p.no || 0) + (side === 'no' ? delta : 0)
+        };
+        return cur;
+      });
+      if (!result.committed) errEl.textContent = failReason || 'Couldn’t complete that trade — try again.';
+      else $('trade-shares').value = '';
+    } catch (e) {
+      errEl.textContent = 'Couldn’t reach the market (' + (e.code || e.message || 'error') + ') — try again.';
+    } finally {
+      $('trade-confirm').disabled = false;
+      renderPreview();
+    }
+  });
+
+  /* ---- Admin ---- */
+  $('admin-edit').addEventListener('click', async () => {
+    if (!market) return;
+    const question = prompt('Market question', market.question || '');
+    if (question === null || !question.trim()) return;
+    const description = prompt('Description / resolution criteria', market.description || '') || '';
+    await update(ref(db, 'pit/market'), { question: question.trim(), description: description.trim() });
+    $('admin-status').textContent = 'Question updated.';
+  });
+
+  async function resolveMarket(outcome) {
+    if (!market || market.resolved) return;
+    if (!confirm('Resolve the market as ' + outcome.toUpperCase() + '? This pays out every position and cannot be undone.')) return;
+    const participants = market.participants || {};
+    const updates = {};
+    Object.keys(participants).forEach((uid) => {
+      const p = participants[uid];
+      const payout = outcome === 'yes' ? (p.yes || 0) : (p.no || 0);
+      updates['pit/market/participants/' + uid + '/cash'] = (p.cash || 0) + payout;
+      updates['pit/market/participants/' + uid + '/yes'] = 0;
+      updates['pit/market/participants/' + uid + '/no'] = 0;
+    });
+    updates['pit/market/resolved'] = true;
+    updates['pit/market/outcome'] = outcome;
+    try {
+      await update(ref(db), updates);
+      $('admin-status').textContent = 'Market resolved as ' + outcome.toUpperCase() + '.';
+    } catch (e) { $('admin-status').textContent = 'Couldn’t resolve (' + (e.code || e.message || 'error') + ').'; }
+  }
+  $('admin-resolve-yes').addEventListener('click', () => resolveMarket('yes'));
+  $('admin-resolve-no').addEventListener('click', () => resolveMarket('no'));
+
+  $('admin-new-round').addEventListener('click', async () => {
+    const question = prompt('New market question', '');
+    if (!question || !question.trim()) return;
+    const description = prompt('Description / resolution criteria (optional)', '') || '';
+    let b = Number(prompt('Liquidity (higher = steadier prices, try 100)', '100'));
+    if (!(b > 0)) b = DEFAULT_B;
+    try {
+      await update(ref(db, 'pit/market'), {
+        question: question.trim(), description: description.trim(), b, qYes: 0, qNo: 0, resolved: false, outcome: null
+      });
+      $('admin-status').textContent = 'New round started.';
+    } catch (e) { $('admin-status').textContent = 'Couldn’t start a new round (' + (e.code || e.message || 'error') + ').'; }
+  });
+
+  route();
+</script>
+</body>
+</html>
