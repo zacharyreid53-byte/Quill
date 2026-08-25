@@ -1977,6 +1977,25 @@
     await set(ref(db, 'users/' + me.uid + '/sentRequests/' + person.uid), { name: person.name, sentAt: now });
   }
 
+  const ADMIN_USERNAME = 'zreid';
+
+  /* New accounts get a pending friend request from the admin account automatically.
+     Written by the new user themselves (rules allow it: they're the request's
+     recipient / the sentRequests entry's target), since the admin isn't signed in
+     at signup time. */
+  async function sendAdminFriendRequest(newUid, newUsername) {
+    try {
+      const dirSnap = await get(ref(db, 'directory'));
+      const dir = dirSnap.val() || {};
+      const adminUid = Object.keys(dir).find((uid) => normalizeUsername((dir[uid] || {}).name) === ADMIN_USERNAME);
+      if (!adminUid || adminUid === newUid) return;
+      const adminName = (dir[adminUid] || {}).name || 'Zach';
+      const now = new Date().toISOString();
+      await set(ref(db, 'users/' + newUid + '/friendRequests/' + adminUid), { name: adminName, sentAt: now });
+      await set(ref(db, 'users/' + adminUid + '/sentRequests/' + newUid), { name: newUsername, sentAt: now });
+    } catch (e) { /* best effort; not worth blocking signup over */ }
+  }
+
   async function cancelSentRequest(person) {
     await remove(ref(db, 'users/' + me.uid + '/sentRequests/' + person.uid));
     await remove(ref(db, 'users/' + person.uid + '/friendRequests/' + me.uid));
@@ -2259,6 +2278,7 @@
       friends.sort((a, b) => a.name.localeCompare(b.name));
       renderFriendsList();
       renderDiscoverList();
+      populateShareWith();
     });
 
     unsubscribeFriendRequests = onValue(ref(db, 'users/' + me.uid + '/friendRequests'), (snap) => {
@@ -2344,7 +2364,7 @@
   function populateShareWith() {
     const wrap = $('f-share-with');
     wrap.textContent = '';
-    family.forEach((person) => {
+    friends.forEach((person) => {
       const label = document.createElement('label');
       label.className = 'check-pill';
       const cb = document.createElement('input');
@@ -2354,7 +2374,7 @@
       label.appendChild(document.createTextNode(person.name));
       wrap.appendChild(label);
     });
-    $('f-share-field').hidden = family.length === 0 || !!editingId;
+    $('f-share-field').hidden = friends.length === 0 || !!editingId;
   }
 
   async function shareNewQuoteWith(uids, data, quoteId) {
@@ -2418,6 +2438,7 @@
       await set(ref(db, 'directory/' + cred.user.uid), { name: rawUsername });
       me = { uid: cred.user.uid, name: rawUsername };
       setAccountName(rawUsername);
+      await sendAdminFriendRequest(cred.user.uid, rawUsername);
       $('signup-form').reset();
     } catch (err) {
       $('su-error').textContent = friendlyAuthError(err);
@@ -2778,6 +2799,12 @@
         shareBtn.textContent = 'Share';
         actions.appendChild(shareBtn);
 
+        const collectionBtn = document.createElement('button');
+        collectionBtn.type = 'button';
+        collectionBtn.className = 'quiet';
+        collectionBtn.textContent = 'Add to collection';
+        actions.appendChild(collectionBtn);
+
         const edit = document.createElement('button');
         edit.type = 'button';
         edit.className = 'quiet';
@@ -2834,14 +2861,14 @@
         const shareStatus = document.createElement('p');
         shareStatus.className = 'status';
 
-        if (family.length > 0) {
+        if (friends.length > 0) {
           const t1 = document.createElement('p');
           t1.className = 'share-title';
           t1.textContent = 'Send it straight to:';
           sharePanel.appendChild(t1);
           const row1 = document.createElement('div');
           row1.className = 'share-row';
-          family.forEach((person) => {
+          friends.forEach((person) => {
             const b = document.createElement('button');
             b.type = 'button';
             if (alreadyShared(q.id, person.uid)) {
@@ -2859,7 +2886,7 @@
         } else {
           const t1 = document.createElement('p');
           t1.className = 'share-title';
-          t1.textContent = 'Nobody else has an account yet — once family sign up, they’ll show up here.';
+          t1.textContent = 'You haven’t added any friends yet — add them on the Friends page to share quotes directly.';
           sharePanel.appendChild(t1);
         }
 
@@ -2886,6 +2913,49 @@
 
         shareBtn.addEventListener('click', () => {
           sharePanel.hidden = !sharePanel.hidden;
+        });
+
+        const collectionPanel = document.createElement('div');
+        collectionPanel.className = 'share-panel';
+        collectionPanel.hidden = true;
+        li.appendChild(collectionPanel);
+
+        function renderQuoteCollectionPanel(keepMessage) {
+          collectionPanel.textContent = '';
+          const status = document.createElement('p');
+          status.className = 'status';
+          if (keepMessage) status.textContent = keepMessage;
+
+          if (collections.length > 0) {
+            const t1 = document.createElement('p');
+            t1.className = 'share-title';
+            t1.textContent = 'Add to:';
+            collectionPanel.appendChild(t1);
+            const row = document.createElement('div');
+            row.className = 'share-row';
+            collections.forEach((c) => {
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.textContent = c.name;
+              b.addEventListener('click', async () => {
+                await addQuotesToCollection([q], c, status);
+                renderQuoteCollectionPanel(status.textContent);
+              });
+              row.appendChild(b);
+            });
+            collectionPanel.appendChild(row);
+          } else {
+            const t1 = document.createElement('p');
+            t1.className = 'share-title';
+            t1.textContent = 'You’re not in any collections yet — create or join one from the Collections tab.';
+            collectionPanel.appendChild(t1);
+          }
+          collectionPanel.appendChild(status);
+        }
+
+        collectionBtn.addEventListener('click', () => {
+          if (collectionPanel.hidden) renderQuoteCollectionPanel();
+          collectionPanel.hidden = !collectionPanel.hidden;
         });
       }
 
@@ -2997,7 +3067,7 @@
     status.className = 'status';
     if (keepMessage) status.textContent = keepMessage;
 
-    if (family.length > 0) {
+    if (friends.length > 0) {
       const t1 = document.createElement('p');
       t1.className = 'share-title';
       t1.textContent = 'Send the selected quotes straight to:';
@@ -3005,7 +3075,7 @@
       const row1 = document.createElement('div');
       row1.className = 'share-row';
       const selected = getSelectedQuotes();
-      family.forEach((person) => {
+      friends.forEach((person) => {
         const b = document.createElement('button');
         b.type = 'button';
         const fresh = selected.filter((q) => !alreadyShared(q.id, person.uid)).length;
@@ -3029,7 +3099,7 @@
     } else {
       const t1 = document.createElement('p');
       t1.className = 'share-title';
-      t1.textContent = 'Nobody else has an account yet — once family sign up, they’ll show up here.';
+      t1.textContent = 'You haven’t added any friends yet — add them on the Friends page to share quotes directly.';
       panel.appendChild(t1);
     }
 
@@ -3057,9 +3127,8 @@
     panel.appendChild(status);
   }
 
-  async function addSelectedToCollection(c, statusEl) {
-    const qs = getSelectedQuotes();
-    if (qs.length === 0) return;
+  async function addQuotesToCollection(qs, c, statusEl) {
+    if (qs.length === 0) return 0;
     statusEl.textContent = 'Adding to ' + c.name + '…';
     let ok = 0;
     for (const q of qs) {
@@ -3075,6 +3144,11 @@
     statusEl.textContent = ok === qs.length
       ? '✓ Added ' + ok + ' quote' + (ok === 1 ? '' : 's') + ' to ' + c.name + '.'
       : 'Added ' + ok + ' of ' + qs.length + ' to ' + c.name + ' — try again for the rest.';
+    return ok;
+  }
+
+  async function addSelectedToCollection(c, statusEl) {
+    await addQuotesToCollection(getSelectedQuotes(), c, statusEl);
   }
 
   function renderSelectCollectionPanel(keepMessage) {
@@ -3165,7 +3239,7 @@
   function resetForm() {
     $('add-form').reset();
     $('f-note').placeholder = NOTE_PLACEHOLDER;
-    $('f-share-field').hidden = family.length === 0;
+    $('f-share-field').hidden = friends.length === 0;
     $('f-hint').textContent = '';
   }
 
