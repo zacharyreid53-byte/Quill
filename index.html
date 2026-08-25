@@ -470,6 +470,14 @@
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size: 0.75rem;
   }
+  ul.quotes .meta .in-collections {
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.05rem 0.45rem;
+    white-space: nowrap;
+  }
   ul.quotes .meta .spacer { flex: 1; }
   ul.quotes .meta .hint { font-size: 0.75rem; }
   ul.quotes .note { margin: 0.3rem 0 0; font-size: 0.85rem; font-style: italic; color: var(--ink-soft); }
@@ -501,6 +509,40 @@
   ul.collections li.clickable { cursor: pointer; }
   ul.collections li.clickable:hover { border-color: var(--accent); }
   ul.collections .col-name-static { flex: 1; font-size: 1rem; font-weight: 600; color: var(--ink); }
+
+  /* Both of these carry their own [hidden] rules: an unconditional display
+     would otherwise beat the UA's [hidden] { display: none }. */
+  #notes[hidden] { display: none; }
+  .note-card[hidden] { display: none; }
+  .note-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 0.7rem 0.8rem;
+  }
+  .note-card + .note-card { margin-top: 0.6rem; }
+  .note-icon { font-size: 1rem; line-height: 1.5; }
+  .note-body {
+    flex: 1;
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+  .note-body strong { color: var(--ink); font-weight: 600; }
+  .note-dismiss {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0.1rem 0.25rem;
+    cursor: pointer;
+  }
 
   .member-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0.6rem 0; }
   .member-chip {
@@ -734,6 +776,19 @@
       </div>
     </div>
   </header>
+
+  <div id="notes" hidden>
+    <div class="note-card" id="privacy-note" hidden>
+      <span class="note-icon" aria-hidden="true">&#128274;</span>
+      <p class="note-body"><strong>Your quotes are private.</strong> Nobody else can see what you save here &mdash; not unless you share a quote with a friend, or add it to a collection.</p>
+      <button type="button" class="note-dismiss" id="privacy-note-x" aria-label="Dismiss this note">&times;</button>
+    </div>
+    <div class="note-card" id="install-note" hidden>
+      <span class="note-icon" aria-hidden="true">&#128241;</span>
+      <p class="note-body"><strong>Keep Quill on your Home Screen.</strong> <span id="install-note-how"></span></p>
+      <button type="button" class="note-dismiss" id="install-note-x" aria-label="Dismiss this note">&times;</button>
+    </div>
+  </div>
 
   <section>
     <h2>The collection</h2>
@@ -1268,7 +1323,12 @@
       const onInvites = onValue(ref(db, 'collections/' + cid + '/invites'), (s) => {
         upsertCollection(cid, { invites: s.val() || {} });
       }, () => upsertCollection(cid, { invites: {} }));
-      collectionUnsubs.set(cid, [onMeta, onMembers, onJoinReqs, onInvites]);
+      /* Quotes are watched for every collection, not just the open one, so the
+         main list can mark which quotes already live in a collection. */
+      const onQuotes = onValue(ref(db, 'collections/' + cid + '/quotes'), (s) => {
+        upsertCollection(cid, { quotes: s.val() || {} });
+      }, () => upsertCollection(cid, { quotes: {} }));
+      collectionUnsubs.set(cid, [onMeta, onMembers, onJoinReqs, onInvites, onQuotes]);
     });
 
     if (activeCollectionId && !wanted.has(activeCollectionId)) setActiveCollection(null);
@@ -1288,10 +1348,13 @@
     if ('members' in patch) c.members = patch.members || {};
     if ('joinRequests' in patch) c.joinRequests = patch.joinRequests || {};
     if ('invites' in patch) c.invites = patch.invites || {};
+    if ('quotes' in patch) c.quotes = patch.quotes || {};
     c.memberCount = Object.keys(c.members || {}).length;
     collections.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     refreshCollectionViews();
     updateRequestBadges();
+    /* The main list shows which collections a quote is already in. */
+    if ('quotes' in patch) renderList();
   }
 
   function refreshCollectionViews() {
@@ -2583,6 +2646,28 @@
     return !!(quoteId && shareLog[quoteId] && shareLog[quoteId][uid]);
   }
 
+  function quoteKey(text) {
+    return (text || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  /* Copies made from the main list carry a sourceId, but quotes typed straight
+     into a collection (or copied before sourceId existed) don't — so fall back
+     to matching the wording itself. */
+  function collectionHasQuote(c, q) {
+    const key = quoteKey(q.text);
+    const cqs = c.quotes || {};
+    return Object.keys(cqs).some((qid) => {
+      const cq = cqs[qid];
+      if (!cq) return false;
+      if (cq.sourceId && cq.sourceId === q.id) return true;
+      return !!key && quoteKey(cq.text) === key;
+    });
+  }
+
+  function collectionsContaining(q) {
+    return collections.filter((c) => collectionHasQuote(c, q));
+  }
+
   /* Records the send in our own tree so the same quote is never offered to
      the same person twice. Kept separate from the send itself: if this write
      fails the quote still arrived, so it's logged locally either way. */
@@ -2764,6 +2849,16 @@
       date.className = 'date';
       date.textContent = q.added ? fmtDate(q.added) : '';
       meta.appendChild(date);
+      const inCols = collectionsContaining(q);
+      if (inCols.length) {
+        const inTag = document.createElement('span');
+        inTag.className = 'in-collections';
+        inTag.textContent = inCols.length === 1
+          ? 'in ' + inCols[0].name
+          : 'in ' + inCols.length + ' collections';
+        inTag.title = 'In ' + inCols.map((c) => c.name).join(', ');
+        meta.appendChild(inTag);
+      }
       const spacer = document.createElement('span');
       spacer.className = 'spacer';
       meta.appendChild(spacer);
@@ -2936,11 +3031,18 @@
             collections.forEach((c) => {
               const b = document.createElement('button');
               b.type = 'button';
-              b.textContent = c.name;
-              b.addEventListener('click', async () => {
-                await addQuotesToCollection([q], c, status);
-                renderQuoteCollectionPanel(status.textContent);
-              });
+              if (collectionHasQuote(c, q)) {
+                b.textContent = '✓ ' + c.name;
+                b.className = 'shared-already';
+                b.disabled = true;
+                b.title = 'Already in ' + c.name;
+              } else {
+                b.textContent = c.name;
+                b.addEventListener('click', async () => {
+                  await addQuotesToCollection([q], c, status);
+                  renderQuoteCollectionPanel(status.textContent);
+                });
+              }
               row.appendChild(b);
             });
             collectionPanel.appendChild(row);
@@ -3136,7 +3238,8 @@
         await push(ref(db, 'collections/' + c.id + '/quotes'), {
           text: q.text, by: q.by || '', note: q.note || '',
           added: new Date().toISOString(),
-          addedBy: me.name, addedByUid: me.uid
+          addedBy: me.name, addedByUid: me.uid,
+          sourceId: q.id || ''
         });
         ok++;
       } catch (e) { /* status reports the shortfall */ }
@@ -3148,7 +3251,13 @@
   }
 
   async function addSelectedToCollection(c, statusEl) {
-    await addQuotesToCollection(getSelectedQuotes(), c, statusEl);
+    /* Quotes already in the collection are skipped so "3 new" adds exactly 3. */
+    const fresh = getSelectedQuotes().filter((q) => !collectionHasQuote(c, q));
+    if (fresh.length === 0) {
+      statusEl.textContent = c.name + ' already has every selected quote.';
+      return;
+    }
+    await addQuotesToCollection(fresh, c, statusEl);
   }
 
   function renderSelectCollectionPanel(keepMessage) {
@@ -3165,14 +3274,23 @@
       panel.appendChild(t1);
       const row = document.createElement('div');
       row.className = 'share-row';
+      const selected = getSelectedQuotes();
       collections.forEach((c) => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.textContent = c.name;
-        b.addEventListener('click', async () => {
-          await addSelectedToCollection(c, status);
-          renderSelectCollectionPanel(status.textContent);
-        });
+        const fresh = selected.filter((q) => !collectionHasQuote(c, q)).length;
+        if (fresh === 0 && selected.length > 0) {
+          b.textContent = '✓ ' + c.name;
+          b.className = 'shared-already';
+          b.disabled = true;
+          b.title = c.name + ' already has every selected quote';
+        } else {
+          b.textContent = c.name + (fresh < selected.length ? ' (' + fresh + ' new)' : '');
+          b.addEventListener('click', async () => {
+            await addSelectedToCollection(c, status);
+            renderSelectCollectionPanel(status.textContent);
+          });
+        }
         row.appendChild(b);
       });
       panel.appendChild(row);
@@ -3222,6 +3340,49 @@
     setSelectMode(false);
     alert('Deleted ' + done + ' of ' + ids.length + ' selected quotes.');
   });
+
+  /* ---- Intro notes ---- */
+  const PRIVACY_NOTE_KEY = 'quill.note.privacy.v1';
+  const INSTALL_NOTE_KEY = 'quill.note.install.v1';
+
+  /* Private browsing can throw on localStorage, so every access is guarded —
+     a note that can't remember being dismissed is better than a broken page. */
+  function noteDismissed(key) {
+    try { return localStorage.getItem(key) === '1'; } catch (e) { return false; }
+  }
+
+  function dismissNote(key) {
+    try { localStorage.setItem(key, '1'); } catch (e) { /* hidden for this visit only */ }
+    updateNotes();
+  }
+
+  function alreadyInstalled() {
+    try {
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+    } catch (e) { /* older browsers */ }
+    return window.navigator.standalone === true;
+  }
+
+  function installHowText() {
+    const ua = navigator.userAgent || '';
+    if (/iphone|ipad|ipod/i.test(ua)) {
+      return 'Tap the Share button at the bottom of Safari, then “Add to Home Screen”. It opens like a real app, without the browser bars.';
+    }
+    return 'Open your browser’s menu, then “Add to Home Screen” (some phones call it “Install app”). It opens like a real app, without the browser bars.';
+  }
+
+  function updateNotes() {
+    const showPrivacy = !noteDismissed(PRIVACY_NOTE_KEY);
+    const showInstall = !noteDismissed(INSTALL_NOTE_KEY) && !alreadyInstalled();
+    $('privacy-note').hidden = !showPrivacy;
+    $('install-note').hidden = !showInstall;
+    $('notes').hidden = !showPrivacy && !showInstall;
+    if (showInstall) $('install-note-how').textContent = installHowText();
+  }
+
+  $('privacy-note-x').addEventListener('click', () => dismissNote(PRIVACY_NOTE_KEY));
+  $('install-note-x').addEventListener('click', () => dismissNote(INSTALL_NOTE_KEY));
+  updateNotes();
 
   /* ---- Add / edit / delete ---- */
   const NOTE_PLACEHOLDER = 'Thanksgiving 2019, after the turkey incident';
